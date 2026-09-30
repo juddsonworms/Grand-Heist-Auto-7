@@ -4900,6 +4900,7 @@ function drawLighting(sun,R,sx,sy,visCars){
   for(const p of lamps){const hx=p.x+Math.sin(p.a)*17,hy=p.y-Math.cos(p.a)*17;lx.drawImage(SPR.hole,hx-190,hy-190,380,380)}
   for(const c of visCars){
     if(c.dead)continue;
+    if((c.style==='speedboat'||c.style==='jetski')&&bridge[idx(clamp(Math.floor(c.x/T),0,N-1),clamp(Math.floor(c.y/T),0,N-1))]===1)continue;
     if(c.style==='speedboat'||c.style==='jetski'){lx.globalAlpha=.45;lx.drawImage(SPR.hole,c.x-40,c.y-40,80,80);continue}
     if(MILSTY.has(c.style)){if(c.style==='heli'&&c.z>10){const o=c.z*.45;lx.globalAlpha=.55;lx.drawImage(SPR.hole,c.x+o*.8-60,c.y+o*1.2-60,120,120)}continue}
     if(c.lightsOn!==false){lx.save();lx.translate(c.x+Math.cos(c.a)*c.len/2,c.y+Math.sin(c.a)*c.len/2);lx.rotate(c.a);lx.globalAlpha=c.player?1:.8;lx.drawImage(SPR.cone,-6,-190,380,380);lx.restore()}
@@ -5725,8 +5726,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.35';
+const VERSION='2.36';
 const CHANGELOG=[
+  ['2.36','Under the bridge',['Boats going under a bridge now disappear beneath it: only a faint shape shows through, with no shadow, glow or lights on top of the road']],
   ['2.35','Boat fixes',['Boats no longer have car headlights and brake lights; at night they show proper navigation lights: red on the left, green on the right and white at the stern','Boats can no longer drive up onto land: the shore is solid and you bump off it (hard hits cause a little damage)','Boats now pass under bridges instead of looking like they drive across them']],
   ['2.34','Phone, heists and boats',['New phone: press I (D-pad up on a controller, or the Phone button on touch) for Heists, Bounties, Dispatch, Services and the Leaderboard','Co-op heists: plan the Diamond District Job, the Harbor Bank Vault or the Area 51 Prototype, invite up to three players from the phone, and split a bigger payout (25% more for every extra crew member)','Heists have steps: meet up, hold the ring while the alarm rings (more crew inside = faster), lose the police together, then stash the loot','Bounty hunting: take a contract, search the red circle for the target, deal with their armed bodyguards and take them down before they get away','Emergency jobs at job centres and from Dispatch: ambulance runs to the new hospitals, fire truck calls where you hose down a burning building, and tow truck jobs','Boats: speedboats and jet skis at seven marinas around the coast, with a wake and spray; hop off near the shore, or have one delivered from the phone','Parachutes: press F / B in a helicopter or jet high in the air to bail out and glide down; F / B again near the ground to cut away','Services on the phone: a mechanic brings your car, a taxi takes you to your waypoint, plus boat delivery, ammo and armor drops','Server leaderboard: richest player, heists, bounties, idols, valuables, emergency calls and fastest maze time, saved on your own server']],
   ['2.33','Treasure hunt',['40 hidden valuables are scattered around the city and islands: rare coins, vintage vinyl, signed baseballs, gold chains, pocket watches, jade figurines, diamond rings and stolen paintings','They are not on any map; look for something small that sparkles on sidewalks, plazas, grass and beaches','Walk or drive over one to pick it up; the status card shows how many you are carrying','Sell them at any pawn shop, one type at a time or all at once, for $600 up to $8,000 each','A spot you have emptied refills 30 minutes later']],
@@ -6660,7 +6662,7 @@ function stepBoat(c,ctrl,h,isP){
 function drawBoat(g,v){
   const L=v.len,W=v.wid,hl=L/2,hw=W/2,col=v.dead?'#2b2622':v.col;
   const under=bridge[idx(clamp(Math.floor(v.x/T),0,N-1),clamp(Math.floor(v.y/T),0,N-1))]===1;
-  g.save();g.translate(v.x,v.y);g.rotate(v.a);g.globalAlpha=(v.fade!==undefined?v.fade:1)*(under?.28:1);
+  g.save();g.translate(v.x,v.y);g.rotate(v.a);g.globalAlpha=(v.fade!==undefined?v.fade:1)*(under?.16:1);
   if(v.style==='jetski'){
     g.fillStyle=col;g.beginPath();g.moveTo(hl,0);g.quadraticCurveTo(hl*.4,-hw,-hl*.2,-hw);g.lineTo(-hl,-hw*.8);g.lineTo(-hl,hw*.8);g.lineTo(-hl*.2,hw);g.quadraticCurveTo(hl*.4,hw,hl,0);g.fill();
     g.fillStyle='rgba(255,255,255,.25)';g.beginPath();g.moveTo(hl*.9,0);g.quadraticCurveTo(hl*.4,-hw*.6,0,-hw*.6);g.lineTo(0,-hw*.3);g.fill();
@@ -6676,6 +6678,8 @@ function drawBoat(g,v){
   g.restore();
 }
 {const orig=drawBody;drawBody=function(g,v){if(v.style==='speedboat'||v.style==='jetski'){drawBoat(g,v);return}return orig(g,v)}}
+const boatUnderBridge=v=>bridge[idx(clamp(Math.floor(v.x/T),0,N-1),clamp(Math.floor(v.y/T),0,N-1))]===1;
+{const orig=drawShadow;drawShadow=function(g,v){if((v.style==='speedboat'||v.style==='jetski')&&boatUnderBridge(v))return;return orig(g,v)}}
 // marinas: a dock on the shore with a speedboat and a jet ski tied up
 const marinas=[];
 {
