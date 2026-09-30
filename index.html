@@ -5738,8 +5738,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.39';
+const VERSION='2.40';
 const CHANGELOG=[
+  ['2.40','Pricier ammo drops',['Phone ammo drops now charge for the rounds you actually get, at double the gun-shop price, plus a $750 delivery fee','Buying at a gun shop is always the cheaper option']],
   ['2.39','Wasted, smoothly',['Getting wasted or busted no longer snaps you straight to the respawn point','The game drops into slow motion and fades to grey while the camera pushes in and WASTED or BUSTED fades up; on foot you fall down, or put your hands up for the police','Then it fades to black, moves you to the garage or your home, and fades back in with the summary']],
   ['2.38','Beach landings',['You can run a boat up onto a beach again: it slides up the sand and grinds to a stop','Once it is on land the engine does nothing, so you cannot drive it around; reverse while the back is still in the water to slide it off, or hop out']],
   ['2.37','Parked after bailing',['After you bail out, the empty jet, plane or helicopter loses its speed and comes down, so it no longer takes off again at full speed when you get back in']],
@@ -7120,11 +7121,11 @@ function renderPhone(){
   }else if(A==='services'){
     title='Services';line=interior?'Step outside to use services.':'Delivered to wherever you are.';const inside=!!interior;
     const own=MODEL[save.car]||MODELS[0],taxiCost=waypoint?Math.round((100+Math.hypot(waypoint.x-pp.x,waypoint.y-pp.y)*.04)/10)*10:0;
-    const ammoCost=ownedWeapons().length*150;
+    const ammoQ=ammoQuote(),ammoCost=ammoQ.cost;
     h=phItem('Mechanic',`Bring your ${own.name} to you, repaired`,money(250),'svc:mech','Call',inside||save.cash<250)+
       phItem('Taxi',waypoint?`Ride to your waypoint${waypoint.name?' ('+esc(waypoint.name)+')':''}`:'Set a waypoint on the map first',waypoint?money(taxiCost):'','svc:taxi','Ride',inside||!waypoint||save.cash<taxiCost||police.heat>=1)+
       phItem('Boat delivery','A speedboat waiting at the nearest shore',money(600),'svc:boat','Call',inside||save.cash<600)+
-      phItem('Ammo drop',ownedWeapons().length?'Top up every gun you own':'You don’t own any guns',ammoCost?money(ammoCost):'','svc:ammo','Buy',!ammoCost||save.cash<ammoCost)+
+      phItem('Ammo drop',!ownedWeapons().length?'You don’t own any guns':ammoQ.rounds?`Top up every gun you own (${ammoQ.rounds} rounds) · double gun-shop prices plus ${money(AMMO_FEE)} delivery`:'Every gun is already topped up',ammoCost?money(ammoCost):'','svc:ammo','Buy',!ammoCost||save.cash<ammoCost)+
       phItem('Armor drop','Full body armor',money(1000),'svc:armor','Buy',ped.armor>=100||save.cash<1000);
   }else if(A==='lb'){
     title='Leaderboard';
@@ -7136,6 +7137,14 @@ function renderPhone(){
     h+=`<div class="seg"><button class="segb" data-ph="lbref">Refresh</button></div>`;
   }
   $('shopName').textContent=title;$('shopLine').textContent=line;$('shopItems').innerHTML=(A!=='home'?back:'')+h;
+}
+// ammo drops cost double the gun-shop price per round, plus a delivery fee
+const AMMO_FEE=750;
+function ammoQuote(){
+  const fill=[];let cost=0,rounds=0;
+  for(const id of ownedWeapons()){const w=WEAPONS[id],s=save.weapons[id],it=ITEMS.gun.find(x=>x.kind==='ammo'&&x.w===id);if(!w||!s||!it)continue;
+    const need=Math.max(0,w.mag*5-s.res);if(!need)continue;fill.push([id,need]);rounds+=need;cost+=need*it.price/it.n*2}
+  return{fill,rounds,cost:rounds?Math.round((cost+AMMO_FEE)/10)*10:0};
 }
 function phoneService(k){
   const pp=playerPos();
@@ -7152,7 +7161,7 @@ function phoneService(k){
       const d=Math.hypot(x*T+32-pp.x,y*T+32-pp.y);if(d<bd){bd=d;best={x:x*T+32,y:y*T+32}}}
     if(!best){addFeed('No water close enough · head to the coast');return}
     const c=makeCar(BOATS.speedboat,rpick(['#2f6fd6','#c9302c','#1f2a33']));placeCar(c,best.x,best.y,0);c.stolenOnce=true;parked.push(c);save.cash-=600;persist();addFeed('A speedboat is waiting at the shore',-600);waypoint={x:best.x,y:best.y,name:'Your boat'};gpsT=0;return}
-  if(k==='ammo'){const g=ownedWeapons(),cost=g.length*150;if(!cost||save.cash<cost)return;for(const id of g){const w=WEAPONS[id],s=save.weapons[id];s.res=Math.max(s.res,w.mag*5)}save.cash-=cost;persist();addFeed('Ammo dropped off',-cost);return}
+  if(k==='ammo'){const q=ammoQuote();if(!q.cost||save.cash<q.cost)return;for(const [id,n] of q.fill)save.weapons[id].res+=n;save.cash-=q.cost;persist();addFeed(`Ammo dropped off · ${q.rounds} rounds`,-q.cost);return}
   if(k==='armor'){if(save.cash<1000||ped.armor>=100)return;ped.armor=100;save.armor=100;save.cash-=1000;persist();addFeed('Armor strapped on',-1000);return}
 }
 $('shopItems').addEventListener('click',e=>{
