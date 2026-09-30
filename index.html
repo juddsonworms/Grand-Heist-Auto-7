@@ -3885,14 +3885,53 @@ ITEMS.pawn=[];PLACECOL.pawn='#d9a441';
   const solids=[],deco=[],npcs=[],lights=[],S=(x,y,w,h,k,o)=>solids.push(Object.assign({x,y,w,h,k},o||{})),D=(k,o)=>deco.push(Object.assign({k},o));
   S(0,0,IW,18,'wall');S(0,0,18,IH,'wall');S(IW-18,0,18,IH,'wall');S(0,IH-18,IW/2-46,18,'wall');S(IW/2+46,IH-18,IW/2-46,18,'wall');
   const counter={x:170,y:120,w:300,h:28,k:'counter'};
-  S(40,60,30,300,'rack');S(IW-70,60,30,300,'rack');
-  S(170,230,90,40,'case');S(380,230,90,40,'case');S(270,330,100,36,'case',{island:true});
-  S(40,370,44,34,'crate');S(560,372,40,32,'crate');
-  D('poster',{x:60,y:4,w:110,col:'#d9a441',txt:'WE BUY GOLD'});D('poster',{x:470,y:4,w:110,col:'#e0574f',txt:'CASH LOANS'});D('clock',{x:320,y:9});D('cam',{x:26,y:26});D('cam',{x:IW-28,y:26});
+  S(22,60,34,300,'guitarwall');                                  // guitars and a sax on the left wall
+  S(IW-66,40,44,74,'tvstack');S(IW-66,130,44,74,'tvstack',{v:1});  // old TVs stacked on the right
+  S(IW-60,226,38,88,'bike');                                       // a bike leaning on the wall
+  S(IW-70,330,50,34,'toolbench');                                  // power tools
+  S(150,226,100,40,'pawncase',{v:0});S(390,226,100,40,'pawncase',{v:1});S(270,330,100,36,'pawncase',{v:2}); // jewellery, watches, gold
+  S(40,382,40,26,'pawnbox');S(84,388,30,20,'pawnbox',{v:1});
+  D('pawnsign',{x:320,y:22});D('poster',{x:60,y:4,w:110,col:'#d9a441',txt:'WE BUY GOLD'});D('poster',{x:470,y:4,w:110,col:'#e0574f',txt:'CASH LOANS'});D('cam',{x:26,y:26});D('cam',{x:IW-28,y:26});
   npcs.push({x:320,y:300,hx:320,hy:300,tx:320,ty:300,a:-Math.PI/2,kind:'customer',up:0,step:0,wait:2,shirt:'#5a5f66',skin:'#c68b62',hair:'#2a211c',roam:[[320,300],[200,200],[440,200]]});
   lights.push([320,160,'#ffe7b8'],[200,250,'#ffe7b8'],[440,250,'#ffe7b8'],[320,350,'#ffe7b8']);
   solids.push(counter);
   return{sh,def:SHOPDEF.pawn,solids,deco,npcs,lights,counter,clerk:{x:320,y:86,a:Math.PI/2,up:0,step:0},prog:0,robbed:false,alarm:0,shots:false,idle:0};
+}}
+// pawn shop props
+{const orig=drawSolid;drawSolid=function(s,I,t){
+  if(t!=='pawn')return orig(s,I,t);
+  const g=ctx,{x,y,w,h}=s,sh=()=>{g.fillStyle='rgba(0,0,0,.25)';g.fillRect(x+4,y+5,w,h)};
+  if(s.k==='guitarwall'){g.fillStyle='#4a3a2a';g.fillRect(x,y,w,h);g.fillStyle='#3a2d20';for(let yy=y+6;yy<y+h;yy+=24)g.fillRect(x,yy,w,2);
+    const cols=['#c9302c','#e8b04a','#1f2328','#2f6fd6','#8a4b2a','#e8e4d8','#3fbf7f'];
+    for(let i=0;i<7;i++){const cy=y+22+i*40,col=cols[i];
+      if(i===3){g.fillStyle='#d4af37';g.save();g.translate(x+w/2,cy);g.rotate(.5);g.fillRect(-2,-16,4,24);g.beginPath();g.arc(2,10,7,0,7);g.fill();g.fillStyle='#b8860b';for(let k=0;k<4;k++){g.beginPath();g.arc(0,-10+k*6,1.3,0,7);g.fill()}g.restore();continue}
+      g.fillStyle='#2b2118';g.fillRect(x+w/2-2,cy-18,4,16);g.fillStyle='#1a1410';g.fillRect(x+w/2-3,cy-22,6,6);
+      g.fillStyle=col;g.beginPath();g.ellipse(x+w/2,cy+2,9,7,0,0,7);g.ellipse(x+w/2,cy+10,11,8,0,0,7);g.fill();g.fillStyle='rgba(0,0,0,.55)';g.beginPath();g.arc(x+w/2,cy+5,2.5,0,7);g.fill();
+      g.fillStyle='rgba(255,255,255,.25)';g.fillRect(x+w/2-6,cy+10,12,1.5)}
+    return}
+  if(s.k==='tvstack'){sh();for(let i=0;i<2;i++){const yy=y+i*37,ww=w-(i?0:6),xx=x+(i?0:3);g.fillStyle=i?'#5a4a3a':'#2b2d31';g.fillRect(xx,yy,ww,35);g.fillStyle='#10151a';g.fillRect(xx+4,yy+4,ww-16,27);
+      const on=(s.v===1&&i===0)||(s.v!==1&&i===1);if(on){g.fillStyle=`hsl(${(time*60+i*90)%360},60%,55%)`;g.globalAlpha=.55+Math.random()*.15;g.fillRect(xx+6,yy+6,ww-20,23);g.globalAlpha=1}
+      g.fillStyle='#8a9096';g.beginPath();g.arc(xx+ww-6,yy+10,2,0,7);g.arc(xx+ww-6,yy+18,2,0,7);g.fill()}return}
+  if(s.k==='bike'){g.strokeStyle='#1f2328';g.lineWidth=3;g.beginPath();g.arc(x+w/2,y+14,12,0,7);g.stroke();g.beginPath();g.arc(x+w/2,y+h-14,12,0,7);g.stroke();
+    g.strokeStyle='#c9302c';g.lineWidth=3;g.beginPath();g.moveTo(x+w/2,y+14);g.lineTo(x+w/2+6,y+h/2);g.lineTo(x+w/2,y+h-14);g.moveTo(x+w/2+6,y+h/2);g.lineTo(x+w/2-4,y+26);g.stroke();
+    g.strokeStyle='#8a9096';g.lineWidth=2;g.beginPath();g.moveTo(x+w/2-10,y+8);g.lineTo(x+w/2+10,y+8);g.stroke();g.fillStyle='#1f2328';g.fillRect(x+w/2+2,y+h/2+4,8,5);return}
+  if(s.k==='toolbench'){sh();g.fillStyle='#6b4a32';g.fillRect(x,y,w,h);g.fillStyle='#8a6a45';g.fillRect(x,y,w,3);
+    g.fillStyle='#f2c14a';g.fillRect(x+6,y+8,16,9);g.fillStyle='#1f2328';g.fillRect(x+20,y+10,6,4);g.fillStyle='#2f6fd6';g.fillRect(x+28,y+18,16,10);g.fillStyle='#8a9096';g.beginPath();g.arc(x+36,y+23,3,0,7);g.fill();return}
+  if(s.k==='pawncase'){sh();g.fillStyle='#3a2d20';g.fillRect(x,y,w,h);g.fillStyle='#1c2226';g.fillRect(x+4,y+4,w-8,h-8);
+    if(s.v===0){for(let i=0;i<6;i++){g.strokeStyle=i%2?'#d4af37':'#c7d0d6';g.lineWidth=2;g.beginPath();g.arc(x+14+i*14,y+14,4,0,7);g.stroke();g.fillStyle=['#e85aa0','#6fd0c8','#fff','#c9302c','#3fbf7f','#2f6fd6'][i];g.beginPath();g.arc(x+14+i*14,y+10,1.8,0,7);g.fill()}
+      g.strokeStyle='#d4af37';g.lineWidth=1.5;for(let i=0;i<3;i++){g.beginPath();g.ellipse(x+24+i*26,y+28,9,4,0,0,7);g.stroke()}}
+    else if(s.v===1){for(let i=0;i<5;i++){const cx=x+14+i*18,cy=y+20;g.fillStyle='#3a3d42';g.fillRect(cx-2,cy-12,4,24);g.fillStyle=i%2?'#d4af37':'#c7d0d6';g.beginPath();g.arc(cx,cy,6,0,7);g.fill();g.fillStyle='#10151a';g.beginPath();g.arc(cx,cy,4,0,7);g.fill();g.strokeStyle='#fff';g.lineWidth=1;g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+Math.cos(time+i)*3,cy+Math.sin(time+i)*3);g.stroke()}}
+    else{for(let i=0;i<4;i++){g.fillStyle=i%2?'#e8c15a':'#d4af37';g.beginPath();g.moveTo(x+14+i*20,y+24);g.lineTo(x+30+i*20,y+24);g.lineTo(x+27+i*20,y+14);g.lineTo(x+17+i*20,y+14);g.fill();g.fillStyle='rgba(255,255,255,.4)';g.fillRect(x+18+i*20,y+15,8,1.5)}
+      g.fillStyle='#8fdc6a';g.fillRect(x+w-18,y+8,10,6);g.fillRect(x+w-16,y+15,10,6)}
+    g.fillStyle='rgba(190,225,245,.18)';g.fillRect(x+4,y+4,w-8,h-8);g.strokeStyle='rgba(255,255,255,.7)';g.lineWidth=2;g.strokeRect(x+1,y+1,w-2,h-2);g.fillStyle='rgba(255,255,255,.35)';g.fillRect(x+6,y+5,w*.4,2);return}
+  if(s.k==='pawnbox'){sh();g.fillStyle=s.v?'#a7855a':'#8a6a45';g.fillRect(x,y,w,h);g.fillStyle='rgba(0,0,0,.2)';g.fillRect(x,y+h/2-1,w,2);g.fillStyle='#e8e4d8';g.fillRect(x+4,y+3,10,6);return}
+  return orig(s,I,t);
+}}
+{const orig=drawDeco;drawDeco=function(d,I){
+  if(d.k!=='pawnsign')return orig(d,I);
+  const g=ctx,{x,y}=d;g.fillStyle='#10151a';g.fillRect(x-60,y-2,120,14);
+  for(let i=0;i<3;i++){const bx=x-10+i*10,by=i===1?y+22:y+14;g.strokeStyle='#8a6a2a';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y+10);g.lineTo(bx,by);g.stroke();g.fillStyle='#d4af37';g.beginPath();g.arc(bx,by,5,0,7);g.fill();g.fillStyle='rgba(255,255,255,.5)';g.beginPath();g.arc(bx-1.5,by-1.5,1.5,0,7);g.fill()}
+  g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.7+Math.sin(time*4)*.15;g.fillStyle='#ffb347';g.font='900 11px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText('PAWN · LOANS',x,y+5);g.restore();
 }}
 {const orig=drawFloor;drawFloor=function(t){
   if(t!=='pawn')return orig(t);const g=ctx;g.fillStyle='#6b5a45';g.fillRect(0,0,IW,IH);
@@ -5588,8 +5627,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.31';
+const VERSION='2.32';
 const CHANGELOG=[
+  ['2.32','Proper pawn shops',['Pawn shops have their own look now: a wall of guitars and a gold saxophone, stacks of old TVs with flickering screens, a bike and power tools','Glass cases full of rings, necklaces, watches, gold bars and cash','The classic three gold balls sign over the counter']],
   ['2.31','Bunker 9',['A second secret island somewhere off the far west coast, not shown on any map, with a helipad and a hidden sandbar you can drive along','An old army bunker on the island that you can walk into','Inside is a pitch-black maze: find your way with a torch past flickering red emergency lights','A Golden Idol waits at the end of the maze; your best maze time is saved, and a new idol turns up 20 minutes after you take one','New pawn shops (downtown and on Palm Key) buy the Golden Idol for $250,000, and can be robbed like any store']],
   ['2.30','Open house',['Settings has a Player name box: type a new name and press Save name or Enter, and everyone sees it right away','Invite other players to your house: use the home computer, pick a player and press Invite','Invited players get a waypoint to your front door and can walk in with E / Y while you are online','Guests see your floor, walls, furniture and extras exactly as you decorated them, and you see each other inside','Guests can raid the fridge and nap, but only the owner can use the home computer']],
   ['2.29','See the gunfight',['Multiplayer: you now see other players’ bullets, shotgun blasts, sniper shots, rockets and tank shells, with muzzle flashes, gunshot sounds that fade with distance and explosions where rockets land','Multiplayer: players in the same shop, bank, garage or dealership now see each other inside, with name tags, health bars and chat bubbles','You can shoot and be shot by other players inside shops too; your own house stays private']],
