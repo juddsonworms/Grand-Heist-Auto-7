@@ -4917,6 +4917,7 @@ function drawLighting(sun,R,sx,sy,visCars){
   for(const c of visCars){
     if(c.dead)continue;
     const ca=Math.cos(c.a),sa=Math.sin(c.a),hl=c.len/2,hw=c.wid/2-4;
+    if((c.style==='speedboat'||c.style==='jetski')&&bridge[idx(clamp(Math.floor(c.x/T),0,N-1),clamp(Math.floor(c.y/T),0,N-1))]===1)continue;
     if(c.style==='speedboat'||c.style==='jetski'){ // boat navigation lights: red to port, green to starboard, white at the stern
       const at=(fx,fy)=>[c.x+ca*fx-sa*fy,c.y+sa*fx+ca*fy],bw=c.wid/2-1,pt=at(hl*.25,-bw),sb=at(hl*.25,bw),st=at(-hl+2,0),dot=(p,col,r)=>{ctx.globalAlpha=.35*Math.max(nf,.5);ctx.fillStyle=col;ctx.beginPath();ctx.arc(p[0],p[1],r*2.4,0,7);ctx.fill();ctx.globalAlpha=Math.max(nf,.6);ctx.beginPath();ctx.arc(p[0],p[1],r,0,7);ctx.fill()};
       dot(pt,'#ff3040',2.2);dot(sb,'#30ff70',2.2);dot(st,'#ffffff',2);continue}
@@ -5726,7 +5727,7 @@ function seg(label,key,opts,sub){
 }
 const VERSION='2.35';
 const CHANGELOG=[
-  ['2.35','Boat lights',['Boats no longer have car headlights and brake lights; at night they show proper navigation lights: red on the left, green on the right and white at the stern']],
+  ['2.35','Boat fixes',['Boats no longer have car headlights and brake lights; at night they show proper navigation lights: red on the left, green on the right and white at the stern','Boats can no longer drive up onto land: the shore is solid and you bump off it (hard hits cause a little damage)','Boats now pass under bridges instead of looking like they drive across them']],
   ['2.34','Phone, heists and boats',['New phone: press I (D-pad up on a controller, or the Phone button on touch) for Heists, Bounties, Dispatch, Services and the Leaderboard','Co-op heists: plan the Diamond District Job, the Harbor Bank Vault or the Area 51 Prototype, invite up to three players from the phone, and split a bigger payout (25% more for every extra crew member)','Heists have steps: meet up, hold the ring while the alarm rings (more crew inside = faster), lose the police together, then stash the loot','Bounty hunting: take a contract, search the red circle for the target, deal with their armed bodyguards and take them down before they get away','Emergency jobs at job centres and from Dispatch: ambulance runs to the new hospitals, fire truck calls where you hose down a burning building, and tow truck jobs','Boats: speedboats and jet skis at seven marinas around the coast, with a wake and spray; hop off near the shore, or have one delivered from the phone','Parachutes: press F / B in a helicopter or jet high in the air to bail out and glide down; F / B again near the ground to cut away','Services on the phone: a mechanic brings your car, a taxi takes you to your waypoint, plus boat delivery, ammo and armor drops','Server leaderboard: richest player, heists, bounties, idols, valuables, emergency calls and fastest maze time, saved on your own server']],
   ['2.33','Treasure hunt',['40 hidden valuables are scattered around the city and islands: rare coins, vintage vinyl, signed baseballs, gold chains, pocket watches, jade figurines, diamond rings and stolen paintings','They are not on any map; look for something small that sparkles on sidewalks, plazas, grass and beaches','Walk or drive over one to pick it up; the status card shows how many you are carrying','Sell them at any pawn shop, one type at a time or all at once, for $600 up to $8,000 each','A spot you have emptied refills 30 minutes later']],
   ['2.32','Proper pawn shops',['Pawn shops have their own look now: a wall of guitars and a gold saxophone, stacks of old TVs with flickering screens, a bike and power tools','Glass cases full of rings, necklaces, watches, gold bars and cash','The classic three gold balls sign over the counter']],
@@ -6638,7 +6639,11 @@ function stepBoat(c,ctrl,h,isP){
   c.steer+=(ctrl.s-c.steer)*Math.min(1,h*10);
   const k=clamp(Math.abs(vf)/220,.3,1)*(water?1:.3);
   c.a+=c.steer*m.turn*(isP?1.1*SENS[save.cfg.sens??1]:1)*k*h*(vf>=-5?1:-1);
-  c.vx=ca*vf-sa*vl;c.vy=sa*vf+ca*vl;c.x=clamp(c.x+c.vx*h,40,WORLD-40);c.y=clamp(c.y+c.vy*h,40,WORLD-40);
+  c.vx=ca*vf-sa*vl;c.vy=sa*vf+ca*vl;
+  const nx=clamp(c.x+c.vx*h,40,WORLD-40),ny=clamp(c.y+c.vy*h,40,WORLD-40),mv=Math.hypot(c.vx,c.vy)||1,bow=c.m.len*.45;
+  // the shore is solid: boats bump off land instead of driving onto it (stranded boats can still wiggle back to water)
+  if(water&&!onWaterAt(nx+c.vx/mv*bow,ny+c.vy/mv*bow)){const imp=mv;c.vx*=-.2;c.vy*=-.2;vf=-vf*.2;vl*=.2;if(imp>220&&isP){addShake(Math.min(.4,imp/1500));crashSnd(Math.min(.8,imp/1200));splash(c.x+ca*bow,c.y+sa*bow,false);damage(c,Math.min(25,imp/60))}}
+  else{c.x=nx;c.y=ny}
   c.vf=vf;c.vl=vl;c.surf=TW;c.nitroOn=nitroOn;c.braking=!!(ctrl.b&&vf>10);c.thr=ctrl.t;c.hbOn=false;c.beached=!water;
   if(!water)collideCar(c,isP);
 }
@@ -6654,7 +6659,8 @@ function stepBoat(c,ctrl,h,isP){
 }}
 function drawBoat(g,v){
   const L=v.len,W=v.wid,hl=L/2,hw=W/2,col=v.dead?'#2b2622':v.col;
-  g.save();g.translate(v.x,v.y);g.rotate(v.a);if(v.fade!==undefined)g.globalAlpha=v.fade;
+  const under=bridge[idx(clamp(Math.floor(v.x/T),0,N-1),clamp(Math.floor(v.y/T),0,N-1))]===1;
+  g.save();g.translate(v.x,v.y);g.rotate(v.a);g.globalAlpha=(v.fade!==undefined?v.fade:1)*(under?.28:1);
   if(v.style==='jetski'){
     g.fillStyle=col;g.beginPath();g.moveTo(hl,0);g.quadraticCurveTo(hl*.4,-hw,-hl*.2,-hw);g.lineTo(-hl,-hw*.8);g.lineTo(-hl,hw*.8);g.lineTo(-hl*.2,hw);g.quadraticCurveTo(hl*.4,hw,hl,0);g.fill();
     g.fillStyle='rgba(255,255,255,.25)';g.beginPath();g.moveTo(hl*.9,0);g.quadraticCurveTo(hl*.4,-hw*.6,0,-hw*.6);g.lineTo(0,-hw*.3);g.fill();
