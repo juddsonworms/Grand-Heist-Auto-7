@@ -3947,9 +3947,97 @@ function renderPawn(){
 }
 {const orig=renderShop;renderShop=function(){if(interior&&interior.sh.type==='pawn'){renderPawn();return}orig()}}
 $('shopItems').addEventListener('click',e=>{
-  const b=e.target.closest('button[data-pw]');if(!b||!interior)return;e.stopImmediatePropagation();
+  const b=e.target.closest('button[data-pw]');if(!b||!interior||b.dataset.pw!=='idol')return;e.stopImmediatePropagation();
   if(b.dataset.pw==='idol'&&save.idol){save.idol=false;save.idolsSold=(save.idolsSold||0)+1;persist();store.set(SAVE_KEY,save);earn(IDOL_PRICE,'Sold the Golden Idol');banner(money(IDOL_PRICE),'Sold the Golden Idol',2.4);[660,880,1100,1320].forEach((f,i)=>setTimeout(()=>beep(f,.15,'square',.05),i*90))}
   renderPawn();$('shopClose').focus();
+},true);
+
+// =====================================================================
+// hidden valuables: small items scattered around the city (not on any map).
+// Walk or drive over one to pick it up, then sell it at a pawn shop.
+// =====================================================================
+const LOOT_TYPES=[
+  {id:'coin',name:'Rare coin',price:800,w:10,col:'#d9a441',desc:'An 1893 silver dollar'},
+  {id:'vinyl',name:'Vintage vinyl',price:600,w:10,col:'#1f2328',desc:'First pressing, still in the sleeve'},
+  {id:'ball',name:'Signed baseball',price:1200,w:8,col:'#f4f1ea',desc:'Signed by a hall-of-famer, apparently'},
+  {id:'chain',name:'Gold chain',price:1500,w:8,col:'#e8c15a',desc:'Heavy, and very real'},
+  {id:'watch',name:'Pocket watch',price:2000,w:6,col:'#c7d0d6',desc:'Antique silver, still ticking'},
+  {id:'jade',name:'Jade figurine',price:3000,w:5,col:'#3fbf7f',desc:'A tiny carved dragon'},
+  {id:'ring',name:'Diamond ring',price:4000,w:4,col:'#bfe8ff',desc:'Someone is going to miss this'},
+  {id:'painting',name:'Stolen painting',price:8000,w:2,col:'#c9302c',desc:'Rolled up in a tube. Don’t ask'}
+];
+const LOOT_RESPAWN_MIN=30,LOOT_N=40;
+const loot=[];
+{
+  const tw=LOOT_TYPES.reduce((a,t)=>a+t.w,0),pickType=v=>{let a=v*tw;for(const t of LOOT_TYPES){a-=t.w;if(a<=0)return t}return LOOT_TYPES[0]};
+  const cands=[];
+  for(let y=2;y<N-2;y++)for(let x=2;x<N-2;x++){
+    const k=idx(x,y),t=tiles[k];if((t!==TK&&t!==TP&&t!==TG&&t!==TS)||lotGrid[k]>=0||bridge[k])continue;
+    const px=x*T+T/2,py=y*T+T/2;if(inBase(px,py,300)||inAir(px,py,300)||regionAt(px,py)<0)continue;
+    if(treeGrid.has(k))continue;
+    cands.push([hash2(x,y,31337),px+(hash2(y,x,5)-.5)*T*.5,py+(hash2(x,y,6)-.5)*T*.5]);
+  }
+  cands.sort((a,b)=>a[0]-b[0]);
+  for(const [h,x,y] of cands){
+    if(loot.length>=LOOT_N)break;
+    if(loot.some(l=>Math.hypot(l.x-x,l.y-y)<1300))continue;
+    if(shops.some(s=>Math.hypot(s.sx-x,s.sy-y)<120)||homes.some(s=>Math.hypot(s.sx-x,s.sy-y)<120))continue;
+    loot.push({i:loot.length,x,y,type:pickType(hash2(Math.round(x),Math.round(y),99))});
+  }
+}
+const lootReady=l=>Date.now()-((save.lootT||{})[l.i]||0)>LOOT_RESPAWN_MIN*60000;
+const lootCarried=()=>Object.values(save.loot||{}).reduce((a,n)=>a+n,0);
+function lootTick(){
+  if(mode!=='free'||interior)return;
+  const pp=playerPos(),r=onFoot?22:30;if(!onFoot&&(P.z||0)>20)return;
+  for(const l of loot){if(Math.abs(pp.x-l.x)>r||Math.abs(pp.y-l.y)>r||Math.hypot(pp.x-l.x,pp.y-l.y)>r||!lootReady(l))continue;
+    save.loot=save.loot||{};save.lootT=save.lootT||{};save.loot[l.type.id]=(save.loot[l.type.id]||0)+1;save.lootT[l.i]=Date.now();save.lootFound=(save.lootFound||0)+1;persist();
+    addFeed(`Found a ${l.type.name.toLowerCase()} · worth ${money(l.type.price)} at a pawn shop`);
+    sparks(l.x,l.y,14);[880,1175,1568].forEach((f,i)=>setTimeout(()=>beep(f,.12,'triangle',.05),i*70));rumble(.2,.3,80);
+  }
+}
+{const orig=updateFires;updateFires=function(dt){orig(dt);lootTick()}}
+function drawLootItem(g,t,x,y){
+  g.save();g.translate(x,y);
+  switch(t.id){
+    case'coin':g.fillStyle='#8a6a2a';g.beginPath();g.arc(0,1,7,0,7);g.fill();g.fillStyle=t.col;g.beginPath();g.arc(0,0,7,0,7);g.fill();g.strokeStyle='#8a6a2a';g.lineWidth=1;g.beginPath();g.arc(0,0,4.5,0,7);g.stroke();break;
+    case'vinyl':g.fillStyle='#c9302c';g.fillRect(-9,-9,18,18);g.fillStyle=t.col;g.beginPath();g.arc(3,0,8,0,7);g.fill();g.fillStyle='#f2c14a';g.beginPath();g.arc(3,0,2.5,0,7);g.fill();break;
+    case'ball':g.fillStyle=t.col;g.beginPath();g.arc(0,0,7,0,7);g.fill();g.strokeStyle='#c9302c';g.lineWidth=1.2;g.beginPath();g.arc(-7,0,5,-1,1);g.stroke();g.beginPath();g.arc(7,0,5,2.1,4.2);g.stroke();break;
+    case'chain':g.strokeStyle=t.col;g.lineWidth=2.5;g.beginPath();g.ellipse(0,0,9,6,.3,0,7);g.stroke();g.fillStyle=t.col;g.beginPath();g.arc(6,5,3,0,7);g.fill();break;
+    case'watch':g.strokeStyle='#8a9096';g.lineWidth=1.5;g.beginPath();g.moveTo(0,-7);g.lineTo(3,-12);g.stroke();g.fillStyle=t.col;g.beginPath();g.arc(0,0,7,0,7);g.fill();g.fillStyle='#f4f1ea';g.beginPath();g.arc(0,0,5,0,7);g.fill();g.strokeStyle='#10151a';g.lineWidth=1;g.beginPath();g.moveTo(0,0);g.lineTo(0,-3.5);g.moveTo(0,0);g.lineTo(2.5,1);g.stroke();break;
+    case'jade':g.fillStyle='#2a7a54';g.beginPath();g.ellipse(0,4,7,3,0,0,7);g.fill();g.fillStyle=t.col;g.beginPath();g.moveTo(-5,3);g.quadraticCurveTo(-7,-6,0,-9);g.quadraticCurveTo(6,-6,5,3);g.fill();g.fillStyle='#10151a';g.fillRect(1,-6,1.5,1.5);break;
+    case'ring':g.strokeStyle='#d4af37';g.lineWidth=2.5;g.beginPath();g.arc(0,2,6,0,7);g.stroke();g.fillStyle=t.col;g.beginPath();g.moveTo(0,-9);g.lineTo(4,-5);g.lineTo(0,-2);g.lineTo(-4,-5);g.fill();break;
+    case'painting':g.fillStyle='#8a6a45';g.fillRect(-11,-8,22,16);g.fillStyle='#2f6fd6';g.fillRect(-8,-5,16,10);g.fillStyle='#f2c14a';g.beginPath();g.arc(3,-2,2.5,0,7);g.fill();g.fillStyle='#3fbf7f';g.beginPath();g.moveTo(-8,5);g.lineTo(-2,-1);g.lineTo(4,5);g.fill();break;
+  }
+  g.restore();
+}
+function drawLootWorld(g,vis){
+  for(const l of loot){if(!vis(l.x,l.y,40)||!lootReady(l))continue;
+    const bob=Math.sin(time*3+l.i)*1.5;
+    g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(l.x+2,l.y+5,9,4,0,0,7);g.fill();
+    g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.22+Math.sin(time*4+l.i)*.08;g.drawImage(SPR.warm,l.x-34,l.y-34,68,68);g.restore();
+    drawLootItem(g,l.type,l.x,l.y-3+bob);
+    const tw=(time*1.3+l.i*.37)%2;if(tw<.35){const a=tw/.35,s=4+a*6;g.save();g.globalAlpha=1-a;g.strokeStyle='#fff';g.lineWidth=1.5;g.beginPath();g.moveTo(l.x+6-s,l.y-10);g.lineTo(l.x+6+s,l.y-10);g.moveTo(l.x+6,l.y-10-s);g.lineTo(l.x+6,l.y-10+s);g.stroke();g.restore()}
+  }
+}
+{const orig=drawHomesWorld;drawHomesWorld=function(g,vis){orig(g,vis);drawLootWorld(g,vis)}}
+// the pawn shop buys valuables too
+{const orig=renderPawn;renderPawn=function(){
+  orig();const have=save.loot||{},rows=LOOT_TYPES.filter(t=>have[t.id]),total=rows.reduce((a,t)=>a+have[t.id]*t.price,0);
+  const html=`<p class="eyebrow hsec" style="color:#d9a441">Valuables${total?' · you’re carrying '+money(total)+' worth':''}</p>`+
+    (rows.length?rows.map(t=>`<div class="item"><span class="nm">${t.name}${have[t.id]>1?' ×'+have[t.id]:''}</span><span class="ds">${t.desc} · ${money(t.price)} each</span><span class="pr">${money(t.price*have[t.id])}</span><button class="btn sm" data-pw="loot:${t.id}">Sell</button></div>`).join('')+
+      (rows.length>1?`<div class="item"><span class="nm">Sell everything</span><span class="ds">${lootCarried()} items</span><span class="pr">${money(total)}</span><button class="btn sm" data-pw="lootall">Sell all</button></div>`:'')
+    :`<p class="hint">“I buy coins, records, jewellery, watches, art… Folks drop all sorts around this city. Keep your eyes on the ground for anything that sparkles.”</p>`)+
+    `<p class="hint">Valuables found: ${save.lootFound||0} · ${loot.filter(lootReady).length} still out there. Picked-up spots refill after ${LOOT_RESPAWN_MIN} minutes.</p>`;
+  $('shopItems').insertAdjacentHTML('beforeend',html);
+}}
+$('shopItems').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-pw]');if(!b||!interior)return;const v=b.dataset.pw;if(v!=='lootall'&&!v.startsWith('loot:'))return;e.stopImmediatePropagation();
+  const have=save.loot||{},ids=v==='lootall'?Object.keys(have):[v.slice(5)];let cash=0,n=0;
+  for(const id of ids){const t=LOOT_TYPES.find(x=>x.id===id);if(!t||!have[id])continue;cash+=t.price*have[id];n+=have[id];delete have[id]}
+  if(!cash)return;save.loot=have;save.lootSold=(save.lootSold||0)+n;persist();store.set(SAVE_KEY,save);
+  earn(cash,n>1?`Sold ${n} valuables`:'Sold a valuable');beep(660,.1,'square',.05);setTimeout(()=>beep(990,.15,'square',.05),90);
+  renderPawn();const nb=$('shopItems').querySelector('button[data-pw^="loot"]');(nb||$('shopClose')).focus();
 },true);
 // camera modes: how far ahead to look, how fast to follow, zoom and rotation
 const CAM_MODES={
@@ -4261,7 +4349,7 @@ function updateHUD(speed){
     const lbl={airport:'Air',base:'Base',dealer:'Deals',sprint:'Race',circuit:'Loop',drift:'Drift',garage:'Garage',pawn:'Pawn',chop:'Chop',hide:'Safe',jobs:'Jobs',home:'Home',tune:'Tune',clothes:'Style',casino:'Bets',gun:'Guns',mart:'24/7',diner:'Food',jewel:'Gems',bank:'Bank'};
     if(list.length)html2+=`<p class="eyebrow">Nearby</p><ul class="rlist">`+list.map(({p,i,d})=>{const m=p.ev&&p.ev.type!=='garage'?eventMedal(p.ev):null;const on=waypoint&&waypoint.x===p.x&&waypoint.y===p.y;
       return `<li data-p="${i}" tabindex="0" class="${on?'on':''}"><span class="chip c-${p.type}">${lbl[p.type]}</span>${p.ev&&p.ev.type!=='garage'?`<span class="medaldot ${m||''}"></span>`:''}<span class="n">${p.name}</span><span class="t">${Math.round(d*.083)} m</span></li>`}).join('')+`</ul>`;
-    html2+=`<div class="tok"><span>Tokens <b>${save.tokens.length}/${tokens.length}</b></span><span>Jumps <b>${save.jumps.length}/${ramps.length}</b></span><span>Traps <b>${Object.keys(save.traps).length}/${traps.length}</b></span></div>`;
+    html2+=`<div class="tok"><span>Tokens <b>${save.tokens.length}/${tokens.length}</b></span><span>Jumps <b>${save.jumps.length}/${ramps.length}</b></span><span>Traps <b>${Object.keys(save.traps).length}/${traps.length}</b></span>${lootCarried()?`<span>Valuables <b>${lootCarried()}</b></span>`:''}</div>`;
   }
   if(html2!==lastPanel){$('panel').innerHTML=html2;lastPanel=html2}
 }
@@ -5627,8 +5715,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.32';
+const VERSION='2.33';
 const CHANGELOG=[
+  ['2.33','Treasure hunt',['40 hidden valuables are scattered around the city and islands: rare coins, vintage vinyl, signed baseballs, gold chains, pocket watches, jade figurines, diamond rings and stolen paintings','They are not on any map; look for something small that sparkles on sidewalks, plazas, grass and beaches','Walk or drive over one to pick it up; the status card shows how many you are carrying','Sell them at any pawn shop, one type at a time or all at once, for $600 up to $8,000 each','A spot you have emptied refills 30 minutes later']],
   ['2.32','Proper pawn shops',['Pawn shops have their own look now: a wall of guitars and a gold saxophone, stacks of old TVs with flickering screens, a bike and power tools','Glass cases full of rings, necklaces, watches, gold bars and cash','The classic three gold balls sign over the counter']],
   ['2.31','Bunker 9',['A second secret island somewhere off the far west coast, not shown on any map, with a helipad and a hidden sandbar you can drive along','An old army bunker on the island that you can walk into','Inside is a pitch-black maze: find your way with a torch past flickering red emergency lights','A Golden Idol waits at the end of the maze; your best maze time is saved, and a new idol turns up 20 minutes after you take one','New pawn shops (downtown and on Palm Key) buy the Golden Idol for $250,000, and can be robbed like any store']],
   ['2.30','Open house',['Settings has a Player name box: type a new name and press Save name or Enter, and everyone sees it right away','Invite other players to your house: use the home computer, pick a player and press Invite','Invited players get a waypoint to your front door and can walk in with E / Y while you are online','Guests see your floor, walls, furniture and extras exactly as you decorated them, and you see each other inside','Guests can raid the fridge and nap, but only the owner can use the home computer']],
@@ -5788,7 +5877,7 @@ cam.x=P.x;cam.y=P.y;
 spawnBaseVehicles(true);
 renderTitle();setTimeout(()=>$('go').focus(),50);
 try{document.fonts&&document.fonts.ready.then(()=>chunkCache.clear())}catch(e){}
-window.__xtc={ISLE2,MZ,takeIdol,bullets,get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
+window.__xtc={loot,LOOT_TYPES,ISLE2,MZ,takeIdol,bullets,get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
 requestAnimationFrame(t=>{last=t;frame(t)});
 
 // =====================================================================
