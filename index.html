@@ -5738,8 +5738,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.40';
+const VERSION='2.41';
 const CHANGELOG=[
+  ['2.41','Stuck on the sand',['A boat counts as beached as soon as its bow touches land: no throttle, no steering and no more sliding around like it is on ice','The sand grips the hull so it stops quickly and stays put; reverse slowly while there is water behind it to get back off']],
   ['2.40','Pricier ammo drops',['Phone ammo drops now charge for the rounds you actually get, at double the gun-shop price, plus a $750 delivery fee','Buying at a gun shop is always the cheaper option']],
   ['2.39','Wasted, smoothly',['Getting wasted or busted no longer snaps you straight to the respawn point','The game drops into slow motion and fades to grey while the camera pushes in and WASTED or BUSTED fades up; on foot you fall down, or put your hands up for the police','Then it fades to black, moves you to the garage or your home, and fades back in with the summary']],
   ['2.38','Beach landings',['You can run a boat up onto a beach again: it slides up the sand and grinds to a stop','Once it is on land the engine does nothing, so you cannot drive it around; reverse while the back is still in the water to slide it off, or hop out']],
@@ -6645,27 +6646,30 @@ const waterTile=(tx,ty)=>{if(!inb(tx,ty))return true;const k=idx(tx,ty);return t
 const onWaterAt=(x,y)=>waterTile(Math.floor(x/T),Math.floor(y/T));
 function stepBoat(c,ctrl,h,isP){
   c.z=0;c.vz=0;
-  const m=c.m,ca=Math.cos(c.a),sa=Math.sin(c.a),hl=m.len*.45,water=onWaterAt(c.x,c.y),sternWet=onWaterAt(c.x-ca*hl,c.y-sa*hl),bowWet=onWaterAt(c.x+ca*hl,c.y+sa*hl);
+  const m=c.m,ca=Math.cos(c.a),sa=Math.sin(c.a),hl=m.len*.45,water=onWaterAt(c.x,c.y),bowWet=onWaterAt(c.x+ca*hl,c.y+sa*hl);
   let vf=c.vx*ca+c.vy*sa,vl=-c.vx*sa+c.vy*ca;
-  // the propeller only works while the stern is in the water
-  const prop=sternWet&&(water||bowWet);
-  const top=m.top*.82*(.75+.25*c.hp/100),nitroOn=!!(prop&&water&&ctrl.n&&c.nitro>.01&&ctrl.t&&vf>0),maxS=top*(nitroOn?1.25:1);
-  if(prop&&ctrl.t&&vf<maxS)vf+=(m.acc*.75*ctrl.t+(nitroOn?420:0))*h;
-  if(nitroOn)c.nitro=Math.max(0,c.nitro-.3*h);
-  if(ctrl.b&&(prop||sternWet)){if(vf>10&&water)vf-=700*h*ctrl.b;else if(vf>-200)vf-=(water?380:260)*h*ctrl.b}
-  if(water){vf-=vf*.35*h;if(vf>maxS)vf-=(vf-maxS)*2*h;if(ctrl.hb)vf*=Math.exp(-2.5*h);vl*=Math.exp(-m.grip*h)}
-  else{ // beached: the hull grinds to a halt on the sand
-    const f=2800*h;vf=Math.abs(vf)<=f?0:vf-Math.sign(vf)*f;
-    if(ctrl.b&&vf<=0&&[.5,1,1.8,2.6].some(q=>onWaterAt(c.x-ca*m.len*q,c.y-sa*m.len*q)))vf=-80; // shove it back off the sandvl*=Math.exp(-14*h);
-    if(!c.beachedT&&Math.abs(vf)>200&&isP){addShake(Math.min(.35,Math.abs(vf)/1800));crashSnd(Math.min(.6,Math.abs(vf)/1400));puff(c.x+ca*hl,c.y+sa*hl,'#e2cc98',12,140,10,.9)}
-    if(Math.abs(vf)>60&&Math.random()<.4)puff(c.x,c.y,'#e2cc98',1,40,7,.6)}
-  c.beachedT=water?0:(c.beachedT||0)+h;
-  c.steer+=(ctrl.s-c.steer)*Math.min(1,h*10);
-  const k=water?clamp(Math.abs(vf)/220,.3,1):0;
-  c.a+=c.steer*m.turn*(isP?1.1*SENS[save.cfg.sens??1]:1)*k*h*(vf>=-5?1:-1);
+  // grounded as soon as the bow is on land: no power, no steering, the sand grabs the hull
+  const grounded=!water||!bowWet,wasGrounded=!!c.beached;
+  let nitroOn=false;
+  if(!grounded){
+    const top=m.top*.82*(.75+.25*c.hp/100);nitroOn=!!(ctrl.n&&c.nitro>.01&&ctrl.t&&vf>0);const maxS=top*(nitroOn?1.25:1);
+    if(ctrl.t&&vf<maxS)vf+=(m.acc*.75*ctrl.t+(nitroOn?420:0))*h;
+    if(nitroOn)c.nitro=Math.max(0,c.nitro-.3*h);
+    if(ctrl.b){if(vf>10)vf-=700*h*ctrl.b;else if(vf>-200)vf-=380*h*ctrl.b}
+    vf-=vf*.35*h;if(vf>maxS)vf-=(vf-maxS)*2*h;if(ctrl.hb)vf*=Math.exp(-2.5*h);vl*=Math.exp(-m.grip*h);
+    c.steer+=(ctrl.s-c.steer)*Math.min(1,h*10);
+    c.a+=c.steer*m.turn*(isP?1.1*SENS[save.cfg.sens??1]:1)*clamp(Math.abs(vf)/220,.3,1)*h*(vf>=-5?1:-1);
+  }else{
+    if(!wasGrounded&&isP&&Math.abs(vf)>200){addShake(Math.min(.35,Math.abs(vf)/1800));crashSnd(Math.min(.6,Math.abs(vf)/1400));puff(c.x+ca*hl,c.y+sa*hl,'#e2cc98',12,140,10,.9)}
+    const f=(water?1800:3200)*h;vf=Math.abs(vf)<=f?0:vf-Math.sign(vf)*f;const fl=3200*h;vl=Math.abs(vl)<=fl?0:vl-Math.sign(vl)*fl;
+    if(Math.abs(vf)>60&&Math.random()<.4)puff(c.x,c.y,'#e2cc98',1,40,7,.6);
+    c.steer=0;
+    // the only way off: reverse slowly while there is water behind the boat
+    if(ctrl.b&&vf<=0&&[.5,1,1.8,2.6].some(q=>onWaterAt(c.x-ca*m.len*q,c.y-sa*m.len*q)))vf=-80;
+  }
   c.vx=ca*vf-sa*vl;c.vy=sa*vf+ca*vl;
   c.x=clamp(c.x+c.vx*h,40,WORLD-40);c.y=clamp(c.y+c.vy*h,40,WORLD-40);
-  c.vf=vf;c.vl=vl;c.surf=TW;c.nitroOn=nitroOn;c.braking=!!(ctrl.b&&vf>10);c.thr=prop?ctrl.t:0;c.hbOn=false;c.beached=!water;
+  c.vf=vf;c.vl=vl;c.surf=TW;c.nitroOn=nitroOn;c.braking=!!(ctrl.b&&vf>10);c.thr=grounded?0:ctrl.t;c.hbOn=false;c.beached=grounded;
   if(!water)collideCar(c,isP);
 }
 {const orig=stepCar;stepCar=function(c,ctrl,h,isP){if(isBoat(c))return stepBoat(c,ctrl,h,isP);return orig(c,ctrl,h,isP)}}
