@@ -379,6 +379,18 @@ body.intitle .hud,body.intitle #prompt,body.intitle #touch{opacity:0;pointer-eve
 #shop.phone .ov-card{max-width:440px;border:2px solid rgba(236,232,220,.22);border-radius:28px;padding:22px 20px;background:rgba(10,14,17,.92);box-shadow:0 20px 60px rgba(0,0,0,.5)}
 #shop.phone .ov-card h2{font-size:clamp(30px,5vw,44px)}
 #shop.phone .ov-card::before{content:'';display:block;width:70px;height:5px;border-radius:3px;background:rgba(236,232,220,.25);margin:0 auto 4px}
+#world{transition:filter 1.2s ease-out}#world.dying{filter:grayscale(.92) brightness(.78) contrast(1.12)}
+#deathfx{position:absolute;inset:0;z-index:22;pointer-events:none;display:none}#deathfx.on,#deathfx.black{display:block}
+#deathfx .dvig{position:absolute;inset:0;opacity:0;transition:opacity 1.2s;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(60,0,6,.55) 100%)}
+#deathfx.busted .dvig{background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(0,20,70,.55) 100%)}
+#deathfx.on .dvig{opacity:1}
+#deathfx .dtxt{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%) scale(1.25);text-align:center;font:900 clamp(64px,13vw,150px)/1 var(--display);text-transform:uppercase;letter-spacing:.04em;color:#ff4655;text-shadow:0 6px 40px rgba(0,0,0,.8);opacity:0;transition:opacity .8s .5s,transform 2s .5s cubic-bezier(.2,.9,.3,1)}
+#deathfx.busted .dtxt{color:#6fb2ff}
+#deathfx.on .dtxt{opacity:1;transform:translateY(-50%) scale(1)}
+#deathfx .dblack{position:absolute;inset:0;background:#050607;opacity:0;transition:opacity .5s ease-in}
+#deathfx.black .dblack{opacity:1;transition:opacity .5s ease-in}
+#deathfx:not(.black) .dblack{transition:opacity .9s ease-out}
+body.dying .hud,body.dying #prompt,body.dying #mpchip,body.dying #feed{opacity:.2;transition:opacity .6s}
 .devtab{color:#7fe6a0!important}.devtab.on{color:var(--ink)!important}
 .devsec{border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
 .devsec h4{font:800 18px/1 var(--display);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;color:#7fe6a0}
@@ -5726,8 +5738,10 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.37';
+const VERSION='2.39';
 const CHANGELOG=[
+  ['2.39','Wasted, smoothly',['Getting wasted or busted no longer snaps you straight to the respawn point','The game drops into slow motion and fades to grey while the camera pushes in and WASTED or BUSTED fades up; on foot you fall down, or put your hands up for the police','Then it fades to black, moves you to the garage or your home, and fades back in with the summary']],
+  ['2.38','Beach landings',['You can run a boat up onto a beach again: it slides up the sand and grinds to a stop','Once it is on land the engine does nothing, so you cannot drive it around; reverse while the back is still in the water to slide it off, or hop out']],
   ['2.37','Parked after bailing',['After you bail out, the empty jet, plane or helicopter loses its speed and comes down, so it no longer takes off again at full speed when you get back in']],
   ['2.36','Under the bridge',['Boats going under a bridge now disappear beneath it: only a faint shape shows through, with no shadow, glow or lights on top of the road']],
   ['2.35','Boat fixes',['Boats no longer have car headlights and brake lights; at night they show proper navigation lights: red on the left, green on the right and white at the stern','Boats can no longer drive up onto land: the shore is solid and you bump off it (hard hits cause a little damage)','Boats now pass under bridges instead of looking like they drive across them']],
@@ -6630,24 +6644,27 @@ const waterTile=(tx,ty)=>{if(!inb(tx,ty))return true;const k=idx(tx,ty);return t
 const onWaterAt=(x,y)=>waterTile(Math.floor(x/T),Math.floor(y/T));
 function stepBoat(c,ctrl,h,isP){
   c.z=0;c.vz=0;
-  const water=onWaterAt(c.x,c.y),m=c.m,ca=Math.cos(c.a),sa=Math.sin(c.a);
+  const m=c.m,ca=Math.cos(c.a),sa=Math.sin(c.a),hl=m.len*.45,water=onWaterAt(c.x,c.y),sternWet=onWaterAt(c.x-ca*hl,c.y-sa*hl),bowWet=onWaterAt(c.x+ca*hl,c.y+sa*hl);
   let vf=c.vx*ca+c.vy*sa,vl=-c.vx*sa+c.vy*ca;
-  const top=(water?m.top*.82:70)*(.75+.25*c.hp/100),nitroOn=!!(ctrl.n&&c.nitro>.01&&ctrl.t&&vf>0&&water),maxS=top*(nitroOn?1.25:1);
-  if(ctrl.t&&vf<maxS)vf+=(m.acc*.75*ctrl.t+(nitroOn?420:0))*h*(water?1:.3);
+  // the propeller only works while the stern is in the water
+  const prop=sternWet&&(water||bowWet);
+  const top=m.top*.82*(.75+.25*c.hp/100),nitroOn=!!(prop&&water&&ctrl.n&&c.nitro>.01&&ctrl.t&&vf>0),maxS=top*(nitroOn?1.25:1);
+  if(prop&&ctrl.t&&vf<maxS)vf+=(m.acc*.75*ctrl.t+(nitroOn?420:0))*h;
   if(nitroOn)c.nitro=Math.max(0,c.nitro-.3*h);
-  if(ctrl.b){if(vf>10)vf-=700*h*ctrl.b;else if(vf>-200)vf-=380*h*ctrl.b}
-  vf-=vf*(water?.35:5)*h;if(vf>maxS)vf-=(vf-maxS)*2*h;
-  if(ctrl.hb)vf*=Math.exp(-2.5*h);
-  vl*=Math.exp(-(water?m.grip:12)*h);
+  if(ctrl.b&&(prop||sternWet)){if(vf>10&&water)vf-=700*h*ctrl.b;else if(vf>-200)vf-=(water?380:260)*h*ctrl.b}
+  if(water){vf-=vf*.35*h;if(vf>maxS)vf-=(vf-maxS)*2*h;if(ctrl.hb)vf*=Math.exp(-2.5*h);vl*=Math.exp(-m.grip*h)}
+  else{ // beached: the hull grinds to a halt on the sand
+    const f=2800*h;vf=Math.abs(vf)<=f?0:vf-Math.sign(vf)*f;
+    if(ctrl.b&&vf<=0&&[.5,1,1.8,2.6].some(q=>onWaterAt(c.x-ca*m.len*q,c.y-sa*m.len*q)))vf=-80; // shove it back off the sandvl*=Math.exp(-14*h);
+    if(!c.beachedT&&Math.abs(vf)>200&&isP){addShake(Math.min(.35,Math.abs(vf)/1800));crashSnd(Math.min(.6,Math.abs(vf)/1400));puff(c.x+ca*hl,c.y+sa*hl,'#e2cc98',12,140,10,.9)}
+    if(Math.abs(vf)>60&&Math.random()<.4)puff(c.x,c.y,'#e2cc98',1,40,7,.6)}
+  c.beachedT=water?0:(c.beachedT||0)+h;
   c.steer+=(ctrl.s-c.steer)*Math.min(1,h*10);
-  const k=clamp(Math.abs(vf)/220,.3,1)*(water?1:.3);
+  const k=water?clamp(Math.abs(vf)/220,.3,1):0;
   c.a+=c.steer*m.turn*(isP?1.1*SENS[save.cfg.sens??1]:1)*k*h*(vf>=-5?1:-1);
   c.vx=ca*vf-sa*vl;c.vy=sa*vf+ca*vl;
-  const nx=clamp(c.x+c.vx*h,40,WORLD-40),ny=clamp(c.y+c.vy*h,40,WORLD-40),mv=Math.hypot(c.vx,c.vy)||1,bow=c.m.len*.45;
-  // the shore is solid: boats bump off land instead of driving onto it (stranded boats can still wiggle back to water)
-  if(water&&!onWaterAt(nx+c.vx/mv*bow,ny+c.vy/mv*bow)){const imp=mv;c.vx*=-.2;c.vy*=-.2;vf=-vf*.2;vl*=.2;if(imp>220&&isP){addShake(Math.min(.4,imp/1500));crashSnd(Math.min(.8,imp/1200));splash(c.x+ca*bow,c.y+sa*bow,false);damage(c,Math.min(25,imp/60))}}
-  else{c.x=nx;c.y=ny}
-  c.vf=vf;c.vl=vl;c.surf=TW;c.nitroOn=nitroOn;c.braking=!!(ctrl.b&&vf>10);c.thr=ctrl.t;c.hbOn=false;c.beached=!water;
+  c.x=clamp(c.x+c.vx*h,40,WORLD-40);c.y=clamp(c.y+c.vy*h,40,WORLD-40);
+  c.vf=vf;c.vl=vl;c.surf=TW;c.nitroOn=nitroOn;c.braking=!!(ctrl.b&&vf>10);c.thr=prop?ctrl.t:0;c.hbOn=false;c.beached=!water;
   if(!water)collideCar(c,isP);
 }
 {const orig=stepCar;stepCar=function(c,ctrl,h,isP){if(isBoat(c))return stepBoat(c,ctrl,h,isP);return orig(c,ctrl,h,isP)}}
@@ -7171,6 +7188,33 @@ function xsPanelActive(){return !!(XS.heist||XS.bounty||(job&&EMERG.has(job.type
   mctx.fillStyle='rgba(255,70,85,.18)';mctx.strokeStyle='rgba(255,70,85,.8)';mctx.lineWidth=2*DPR;mctx.beginPath();mctx.arc(S/2+px,S/2+py,B.area.r*sc,0,7);mctx.fill();mctx.stroke();mctx.restore()}}
 {const orig=drawBigMap;drawBigMap=function(){orig();const B=XS.bounty;if(!B||B.done)return;const S=bm.width,sc=S/WORLD*MV.z,x=S/2+(B.area.x-MV.cx)*sc,y=S/2+(B.area.y-MV.cy)*sc;
   bctx.fillStyle='rgba(255,70,85,.2)';bctx.strokeStyle='rgba(255,70,85,.9)';bctx.lineWidth=2*DPR;bctx.beginPath();bctx.arc(x,y,Math.max(6*DPR,B.area.r*sc),0,7);bctx.fill();bctx.stroke()}}
+
+// =====================================================================
+// smooth WASTED / BUSTED: slow motion, grey-out, camera push-in, fade to black, respawn, fade back in
+// =====================================================================
+function deathFx(){let d=$('deathfx');if(!d){d=document.createElement('div');d.id='deathfx';d.innerHTML='<div class="dvig"></div><div class="dtxt"></div><div class="dblack"></div>';$('game').appendChild(d)}return d}
+{const orig=defeat;defeat=function(kind){
+  if(XS.death)return;
+  if(XS.phone.open)closeShop();
+  const D=XS.death={kind,t:0,z0:cam.z,onFoot};const el=deathFx();
+  el.className='on '+kind;el.querySelector('.dtxt').textContent=kind==='busted'?'Busted':'Wasted';
+  $('world').classList.add('dying');document.body.classList.add('dying');
+  if(kind==='busted'){[523,392,262].forEach((f,i)=>setTimeout(()=>beep(f,.35,'square',.05),i*260))}else{noiseBurst(90,1.4,.4,'lowpass');[330,262,196,131].forEach((f,i)=>setTimeout(()=>beep(f,.5,'sine',.07),i*300))}
+  rumble(.8,.8,400);
+  setTimeout(()=>el.classList.add('black'),2500);
+  setTimeout(()=>{XS.death=null;$('world').classList.remove('dying');document.body.classList.remove('dying');ped.downT=0;orig(kind);el.classList.remove('on')},3050);
+  setTimeout(()=>el.classList.remove('black'),3200);
+}}
+{const orig=update;update=function(dt){
+  const D=XS.death;if(!D)return orig(dt);
+  D.t+=dt;orig(dt*.3);
+  const e=1-Math.pow(1-Math.min(1,D.t/2.4),3);cam.z=D.z0*(1+.45*e);
+}}
+{const orig=playerCtrl;playerCtrl=function(){return XS.death?ZERO_CTRL:orig()}}
+{const orig=footCtrl;footCtrl=function(){return XS.death?{mx:0,my:0,run:false,fire:false,aim:null}:orig()}}
+{const orig=hurtPed;hurtPed=function(d,x,y){if(XS.death)return;return orig(d,x,y)}}
+{const orig=drawPed;drawPed=function(g,p,o){if(XS.death&&p===ped&&o&&XS.death.onFoot)o=Object.assign({},o,XS.death.kind==='busted'?{hands:true,gun:null}:{down:true,gun:null});return orig(g,p,o)}}
+{const orig=openPhone;openPhone=function(){if(XS.death)return;return orig()}}
 
 })();
 </script>
