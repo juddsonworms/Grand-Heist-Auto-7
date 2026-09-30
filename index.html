@@ -53,7 +53,7 @@ body{background:var(--ink);color:var(--text);font-family:var(--body);overflow:hi
 .rlist li:hover,.rlist li.on{background:rgba(255,255,255,.08)}
 .chip{font:700 9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 5px;border-radius:2px;color:var(--ink);flex:none;min-width:38px;text-align:center}
 .c-sprint{background:var(--cone)} .c-circuit{background:var(--gate)} .c-drift{background:var(--drift)} .c-garage{background:var(--garage)}
-.c-dealer{background:#e8e4d8}.c-tune{background:#ff4d6d}.c-clothes{background:#b388ff}.c-casino{background:#f2c14a}.c-home{background:#f59ac8}.c-chop{background:#ff8a5c}.c-hide{background:#c7b58f}.c-jobs{background:#ffd166}.c-base{background:#9fb86a}.c-airport{background:#9ad0ff}.c-gun{background:var(--gun)} .c-mart{background:var(--mart)} .c-diner{background:var(--diner)} .c-jewel{background:var(--jewel)} .c-bank{background:var(--bank)}
+.c-dealer{background:#e8e4d8}.c-tune{background:#ff4d6d}.c-clothes{background:#b388ff}.c-casino{background:#f2c14a}.c-home{background:#f59ac8}.c-pawn{background:#d9a441}.c-chop{background:#ff8a5c}.c-hide{background:#c7b58f}.c-jobs{background:#ffd166}.c-base{background:#9fb86a}.c-airport{background:#9ad0ff}.c-gun{background:var(--gun)} .c-mart{background:var(--mart)} .c-diner{background:var(--diner)} .c-jewel{background:var(--jewel)} .c-bank{background:var(--bank)}
 .medaldot{width:8px;height:8px;border-radius:50%;flex:none;background:rgba(255,255,255,.14)}
 .medaldot.gold{background:var(--gold)}.medaldot.silver{background:var(--silver)}.medaldot.bronze{background:var(--bronze)}
 .rlist .t{margin-left:auto;font:500 11px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
@@ -533,6 +533,7 @@ body.intitle .hud,body.intitle #prompt,body.intitle #touch{opacity:0;pointer-eve
       <span class="lg"><i style="background:#e8e4d8"></i>Dealer</span>
       <span class="lg"><i style="background:#9fb86a"></i>Area 51</span>
       <span class="lg"><i style="background:#ff8a5c"></i>Chop shop</span>
+      <span class="lg"><i style="background:#d9a441"></i>Pawn shop</span>
       <span class="lg"><i style="background:#c7b58f"></i>Safehouse</span>
       <span class="lg"><i style="background:#ffd166"></i>Jobs</span>
       <span class="lg"><i style="background:#f59ac8"></i>Home</span>
@@ -3632,6 +3633,285 @@ function drawSecretWorld(g,vis){
 }
 {const orig=drawHomesWorld;drawHomesWorld=function(g,vis){orig(g,vis);drawSecretWorld(g,vis)}}
 {const orig=updateFires;updateFires=function(dt){orig(dt);secretTick(dt)}}
+
+// =====================================================================
+// Sentinel Isle: a second secret island off the far west coast (not on any map)
+// with an old military bunker, a pitch-dark maze inside and a Golden Idol at the end.
+// Pawn shops buy the idol.
+// =====================================================================
+const ISLE2={cx:26,cy:220,rx:14,ry:10,name:'Sentinel Isle'};
+const IDOL_PRICE=250000,IDOL_RESPAWN_MIN=20;
+{
+  const S=ISLE2,noise=(x,y)=>hash2(x,y,4711);
+  const val=(x,y)=>{const dx=(x-S.cx)/S.rx,dy=(y-S.cy)/S.ry;return dx*dx+dy*dy+(noise(x>>1,y>>1)-.5)*.3};
+  for(let y=S.cy-S.ry-5;y<=S.cy+S.ry+5;y++)for(let x=S.cx-S.rx-5;x<=S.cx+S.rx+5;x++){
+    if(!inb(x,y))continue;const k=idx(x,y);if(tiles[k]!==TW||bridge[k])continue;const v=val(x,y);
+    if(v<1){tiles[k]=v>.7?TS:TG;shallow[k]=0}
+    else if(v<1.5)shallow[k]=v<1.22?1:2;
+  }
+  // a hidden sandbar you can drive along from the north tip of Saltwater Isle
+  {let x=S.cx+6,y=S.cy+S.ry-2;const tx=44,ty=252;
+    for(let i=0;i<80;i++){for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){const xx=Math.round(x)+ox,yy=Math.round(y)+oy;if(!inb(xx,yy))continue;const k=idx(xx,yy);if(tiles[k]===TW&&!bridge[k]&&!rail[k])shallow[k]=Math.max(1,shallow[k]||0)===2&&Math.abs(ox)+Math.abs(oy)===2?2:1}
+      const d=Math.hypot(tx-x,ty-y);if(d<1)break;x+=(tx-x)/d*.8+Math.sin(i*.5)*.25;y+=(ty-y)/d*.8}}
+  // concrete apron, the bunker block, and a helipad
+  const bx=S.cx-2,by=S.cy-3;
+  for(let y=by-1;y<=by+4;y++)for(let x=bx-1;x<=bx+4;x++){const k=idx(x,y);tiles[k]=TP;shallow[k]=0}
+  for(let y=S.cy+3;y<=S.cy+5;y++)for(let x=S.cx+5;x<=S.cx+7;x++){const k=idx(x,y);tiles[k]=TP;shallow[k]=0}
+  S.heli={x:(S.cx+6.5)*T,y:(S.cy+4.5)*T};
+  const L={x:bx*T,y:by*T,w:3*T,h:2*T,kind:'mil',sub:'bunker',hgt:16,seed:noise(1,2),col:'#6a6d66',wall:'#50534d',de:0};
+  L.cx=L.x+L.w/2;L.cy=L.y+L.h/2;L.tx=bx;L.ty=by;L.tw=3;L.th=2;const id=lots.length;lots.push(L);
+  for(let y=by;y<by+2;y++)for(let x=bx;x<bx+3;x++)lotGrid[idx(x,y)]=id;
+  const ck=Math.floor(L.cx/CPX)*100+Math.floor(L.cy/CPX);
+  for(const m of [lotsByChunk,lotsAllByChunk]){if(!m.has(ck))m.set(ck,[]);m.get(ck).push(id)}
+  S.lot=L;
+  S.sh={type:'bunker',id:'bunker9',name:'Bunker 9',lot:L,door:{x:L.cx,y:L.y+L.h,nx:0,ny:1,w:60},sx:L.cx,sy:L.y+L.h+26,robbedUntil:0};
+  // scrubby palms, kept clear of the concrete
+  for(let y=S.cy-S.ry;y<=S.cy+S.ry;y++)for(let x=S.cx-S.rx;x<=S.cx+S.rx;x++){
+    const k=idx(x,y);if(tiles[k]!==TG&&tiles[k]!==TS)continue;
+    if(x>=bx-2&&x<=bx+5&&y>=by-2&&y<=by+6)continue;if(x>=S.cx+4&&x<=S.cx+8&&y>=S.cy+2&&y<=S.cy+6)continue;
+    if(noise(x,y*3)<(tiles[k]===TG?.3:.1)){const r=14+Math.floor(noise(y,x)*8);const t={x:x*T+r+noise(x+1,y)*(T-2*r),y:y*T+r+noise(x,y+1)*(T-2*r),r,kind:'tree',sh:Math.round((noise(x,y+2)-.5)*24)};if(!treeGrid.has(k))treeGrid.set(k,[]);treeGrid.get(k).push(t)}
+  }
+  S.x=S.cx*T;S.y=S.cy*T;
+}
+const nearBunker=()=>onFoot&&!interior&&!overlay&&Math.hypot(ped.x-ISLE2.sh.sx,ped.y-(ISLE2.sh.sy-14))<46;
+const idolReady=()=>!save.idol&&Date.now()-(save.idolT||0)>IDOL_RESPAWN_MIN*60000;
+
+// ---------- the maze ----------
+const MZ={C:72,WT:12,COLS:17,ROWS:11,ROOM:170};
+MZ.W=MZ.COLS*MZ.C;MZ.MH=MZ.ROWS*MZ.C;MZ.H=MZ.MH+MZ.ROOM;MZ.ec=Math.floor(MZ.COLS/2);MZ.gx=(MZ.ec+.5)*MZ.C;
+{
+  const {COLS,ROWS}=MZ,n=COLS*ROWS,id=(c,r)=>r*COLS+c;
+  // walls[cell] bit 1 = north wall, 2 = west wall (east/south come from the neighbour or the outer edge)
+  const N_=new Uint8Array(n).fill(1),W_=new Uint8Array(n).fill(1),seen=new Uint8Array(n);
+  const st=[id(MZ.ec,ROWS-1)];seen[st[0]]=1;let step=0;
+  while(st.length){
+    const cur=st[st.length-1],c=cur%COLS,r=(cur/COLS)|0,opts=[];
+    if(r>0&&!seen[id(c,r-1)])opts.push([c,r-1,'n']);if(r<ROWS-1&&!seen[id(c,r+1)])opts.push([c,r+1,'s']);
+    if(c>0&&!seen[id(c-1,r)])opts.push([c-1,r,'w']);if(c<COLS-1&&!seen[id(c+1,r)])opts.push([c+1,r,'e']);
+    if(!opts.length){st.pop();continue}
+    const [nc,nr,d]=opts[Math.floor(hash2(cur,step++,909)*opts.length)],nx=id(nc,nr);
+    if(d==='n')N_[cur]=0;else if(d==='s')N_[nx]=0;else if(d==='w')W_[cur]=0;else W_[nx]=0;
+    seen[nx]=1;st.push(nx);
+  }
+  // knock out a few extra walls so there are loops, not just one path
+  for(let i=0;i<14;i++){const k=Math.floor(hash2(i,77,31)*n),c=k%COLS,r=(k/COLS)|0;if(hash2(i,5,5)<.5){if(r>0)N_[k]=0}else if(c>0)W_[k]=0}
+  // the prize goes in the cell furthest from the entrance
+  const dist=new Int16Array(n).fill(-1),q=[id(MZ.ec,ROWS-1)];dist[q[0]]=0;
+  const open=(a,b)=>{const ac=a%COLS,ar=(a/COLS)|0,bc=b%COLS,br=(b/COLS)|0;if(ac===bc)return br<ar?!N_[a]:!N_[b];return bc<ac?!W_[a]:!W_[b]};
+  for(let i=0;i<q.length;i++){const a=q[i],c=a%COLS,r=(a/COLS)|0;for(const [cc,rr] of [[c,r-1],[c,r+1],[c-1,r],[c+1,r]]){if(cc<0||rr<0||cc>=COLS||rr>=ROWS)continue;const b=id(cc,rr);if(dist[b]<0&&open(a,b)){dist[b]=dist[a]+1;q.push(b)}}}
+  let far=0;for(let i=0;i<n;i++)if(dist[i]>dist[far])far=i;
+  MZ.prize={x:(far%COLS+.5)*MZ.C,y:(((far/COLS)|0)+.5)*MZ.C};MZ.steps=dist[far];
+  // wall rectangles
+  const {C,WT,W,MH,H}=MZ,walls=[],R=(x,y,w,h)=>walls.push({x,y,w,h,k:'mzwall'});
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const k=id(c,r);
+    if(N_[k]&&r>0)R(c*C-WT/2,r*C-WT/2,C+WT,WT);
+    if(W_[k]&&c>0)R(c*C-WT/2,r*C-WT/2,WT,C+WT)}
+  R(0,0,W,WT);R(0,0,WT,H);R(W-WT,0,WT,H);
+  R(0,MH-WT/2,MZ.ec*C,WT);R((MZ.ec+1)*C,MH-WT/2,W-(MZ.ec+1)*C,WT); // the maze's bottom edge, open at the entrance
+  R(0,H-WT,MZ.gx-44,WT);R(MZ.gx+44,H-WT,W-MZ.gx-44,WT);             // the blast door gap to the outside
+  MZ.walls=walls;
+  // a few emergency lamps
+  MZ.lamps=[];for(let i=0;i<16;i++){const k=Math.floor(hash2(i,3,808)*n);MZ.lamps.push({x:(k%COLS+.5)*C,y:(((k/COLS)|0)+.5)*C,ph:hash2(i,9,9)*6})}
+}
+let mzCanvas=null;
+function mzRender(){
+  const {W,H,MH,C,WT}=MZ,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  g.fillStyle='#4a4c48';g.fillRect(0,0,W,H);
+  for(let i=0;i<1400;i++){g.fillStyle=hash2(i,1,3)>.5?'rgba(255,255,255,.035)':'rgba(0,0,0,.08)';g.fillRect(hash2(i,2,3)*W,hash2(3,i,3)*H,2+hash2(i,4,4)*3,2)}
+  for(let i=0;i<40;i++){g.fillStyle='rgba(20,18,14,.18)';g.beginPath();g.ellipse(hash2(i,6,1)*W,hash2(7,i,1)*MH,10+hash2(i,i,8)*26,6+hash2(i,2,8)*12,hash2(i,1,1)*3,0,7);g.fill()}
+  g.strokeStyle='rgba(0,0,0,.12)';g.lineWidth=1;g.beginPath();for(let x=0;x<=W;x+=C){g.moveTo(x,0);g.lineTo(x,MH)}for(let y=0;y<=MH;y+=C){g.moveTo(0,y);g.lineTo(W,y)}g.stroke();
+  // entrance room: hazard floor stripes and a stencil
+  g.fillStyle='#55574f';g.fillRect(WT,MH+WT/2,W-2*WT,MZ.ROOM-WT*1.5);
+  g.save();g.beginPath();g.rect(MZ.gx-44,H-58,88,46);g.clip();for(let x=MZ.gx-80;x<MZ.gx+80;x+=20){g.fillStyle='#f2c14a';g.beginPath();g.moveTo(x,H-12);g.lineTo(x+10,H-12);g.lineTo(x+40,H-58);g.lineTo(x+30,H-58);g.fill()}g.restore();
+  g.save();g.globalAlpha=.35;g.fillStyle='#e8e4d8';g.font='900 46px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText('BUNKER 9',MZ.gx,MH+70);g.font='700 13px '+FM;g.fillText('AUTHORIZED PERSONNEL ONLY',MZ.gx,MH+104);g.restore();
+  g.fillStyle='#f2c14a';g.fillRect(MZ.ec*C,MH-WT/2,C,4);
+  // walls with a lit top edge
+  for(const w of MZ.walls){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(w.x+3,w.y+4,w.w,w.h);g.fillStyle='#7c7e77';g.fillRect(w.x,w.y,w.w,w.h);g.fillStyle='#95978f';g.fillRect(w.x,w.y,w.w,Math.min(3,w.h))}
+  // crates and drums by the door
+  const box=(x,y,s,col)=>{g.fillStyle='rgba(0,0,0,.3)';g.fillRect(x+4,y+5,s,s);g.fillStyle=col;g.fillRect(x,y,s,s);g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=2;g.strokeRect(x+3,y+3,s-6,s-6);g.beginPath();g.moveTo(x+3,y+3);g.lineTo(x+s-3,y+s-3);g.stroke()};
+  box(40,MH+40,40,'#6b5a3a');box(84,MH+56,34,'#5f5033');box(W-84,MH+44,40,'#4b5a3a');
+  for(const [x,y] of [[W-140,MH+110],[W-112,MH+118]]){g.fillStyle='#3d4a2e';g.beginPath();g.arc(x,y,13,0,7);g.fill();g.strokeStyle='#2a3320';g.lineWidth=2;g.beginPath();g.arc(x,y,9,0,7);g.stroke()}
+  return c;
+}
+
+// ---------- entering, moving, leaving ----------
+{const orig=buildInterior;buildInterior=function(sh){
+  if(sh.type!=='bunker')return orig(sh);
+  const solids=MZ.walls.slice();
+  solids.push({x:40,y:MZ.MH+40,w:40,h:40,k:'mzprop'},{x:84,y:MZ.MH+56,w:34,h:34,k:'mzprop'},{x:MZ.W-84,y:MZ.MH+44,w:40,h:40,k:'mzprop'});
+  return{sh,bunker:true,def:{label:'Secret bunker',line:'Pitch dark in there. Find your way through the maze.',col:'#f2c14a',rob:null},solids,deco:[],npcs:[],lights:[],
+    counter:{x:-999,y:-999,w:1,h:1},clerk:{x:-999,y:-999,a:0,up:0,step:0},prog:0,robbed:false,alarm:0,shots:false,idle:0,t0:time,got:false,bcam:null};
+}}
+function enterBunker(){
+  enterShop(ISLE2.sh);if(!interior||!interior.bunker)return;
+  ped.x=MZ.gx;ped.y=MZ.H-54;ped.aim=-Math.PI/2;interior.bcam={x:ped.x,y:ped.y-60};
+  if(!mzCanvas)mzCanvas=mzRender();
+  if(!save.bunkerFound){save.bunkerFound=true;persist()}
+  noiseBurst(120,1.2,.35,'lowpass');beep(70,1,'sawtooth',.05);
+  banner('Bunker 9',idolReady()?'Something valuable is hidden in the dark':save.idol?'You already have the idol · sell it at a pawn shop':'The pedestal is empty · come back later',2.4);
+}
+const nearIdol=()=>interior&&interior.bunker&&Math.hypot(ped.x-MZ.prize.x,ped.y-MZ.prize.y)<44;
+function takeIdol(){
+  const I=interior;if(!idolReady()||I.got)return;
+  I.got=true;save.idol=true;save.idolT=Date.now();save.idolsFound=(save.idolsFound||0)+1;
+  const t=time-I.t0,best=save.mazeBest;if(!best||t<best)save.mazeBest=t;persist();store.set(SAVE_KEY,save);
+  const f=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  banner('Golden Idol',`Maze cleared in ${f(t)}${!best||t<best?' · new best':''} · sell it at a pawn shop`,3);
+  addFeed('Picked up the Golden Idol · worth '+money(IDOL_PRICE)+' at a pawn shop');
+  [523,659,784,1047,1319,1568].forEach((q,i)=>setTimeout(()=>beep(q,.3,'triangle',.06),i*110));
+  sparks(MZ.prize.x,MZ.prize.y,30);rumble(.6,.6,300);
+}
+{const orig=updateInterior;updateInterior=function(dt,ctl){
+  const I=interior;if(!I||!I.bunker)return orig(dt,ctl);
+  updatePed(dt,ctl);
+  if(ped.y>MZ.H-14&&Math.abs(ped.x-MZ.gx)<44)exitShop();
+}}
+{const orig=interiorCollide;interiorCollide=function(o,R){
+  if(!interior||!interior.bunker)return orig(o,R);
+  for(const s of interior.solids){if(Math.abs(s.x+s.w/2-o.x)>s.w/2+R+6||Math.abs(s.y+s.h/2-o.y)>s.h/2+R+6)continue;pedPushRect(o,s.x,s.y,s.w,s.h,R)}
+  o.x=clamp(o.x,MZ.WT+R,MZ.W-MZ.WT-R);o.y=clamp(o.y,MZ.WT+R,MZ.H+30);
+}}
+{const orig=interiorBulletHit;interiorBulletHit=function(b){
+  if(!interior||!interior.bunker)return orig(b);
+  if(b.x<0||b.y<0||b.x>MZ.W||b.y>MZ.H)return true;
+  for(const s of interior.solids)if(b.x>s.x&&b.x<s.x+s.w&&b.y>s.y&&b.y<s.y+s.h){sparks(b.x,b.y,3);return true}
+  return false;
+}}
+// the camera follows you through the maze instead of framing a small room
+{const orig=update;update=function(dt){
+  orig(dt);const I=interior;if(!I||!I.bunker)return;
+  const z=clamp(Math.min(VW,VH)/560,.85,1.7);I.bcam=I.bcam||{x:ped.x,y:ped.y};const k=Math.min(1,dt*5);
+  I.bcam.x+=(ped.x-I.bcam.x)*k;I.bcam.y+=(ped.y-I.bcam.y)*k;cam.x=I.bcam.x;cam.y=I.bcam.y;cam.z=z;cam.rot=0;
+}}
+{const orig=action;action=function(){
+  if(!overlay&&!hiding){
+    if(interior&&interior.bunker){if(nearIdol()&&idolReady()&&!interior.got)takeIdol();else if(nearIdol())addFeed(save.idol?'You’re already carrying the idol':'The pedestal is empty · a new idol turns up every '+IDOL_RESPAWN_MIN+' minutes');return}
+    if(!interior&&nearBunker()){enterBunker();return}
+  }
+  return orig();
+}}
+function bunkerPrompts(pr){
+  const K_=(k,b)=>`<kbd>${pad.using?b:k}</kbd>`;
+  if(nearIdol())pr.push(idolReady()&&!interior.got?['',`${K_('E','Y')}Take the Golden Idol`,'act']:['info',save.idol?'You have the idol · sell it at a pawn shop':'Empty pedestal · come back in '+Math.max(1,Math.ceil((IDOL_RESPAWN_MIN*60000-(Date.now()-(save.idolT||0)))/60000))+' min']);
+  else if(ped.y>MZ.H-90)pr.push(['info','Walk out the blast door to leave']);
+  else if(!interior.got&&idolReady()){const s=time-interior.t0;pr.push(['info',`In the maze · ${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}${save.mazeBest?' · best '+Math.floor(save.mazeBest/60)+':'+String(Math.floor(save.mazeBest%60)).padStart(2,'0'):''}`])}
+}
+
+// ---------- drawing ----------
+{const orig=drawInterior;drawInterior=function(){
+  const I=interior;if(!I||!I.bunker)return orig();
+  if(!mzCanvas)mzCanvas=mzRender();
+  const g=ctx,sx=(Math.random()-.5)*shake*10,sy=(Math.random()-.5)*shake*10;
+  g.setTransform(1,0,0,1,0,0);g.fillStyle='#050607';g.fillRect(0,0,cvs.width,cvs.height);
+  worldXf(g,DPR,sx,sy);
+  g.drawImage(mzCanvas,0,0);
+  // the prize on its pedestal
+  const p=MZ.prize,ready=idolReady()&&!I.got;
+  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(p.x-17,p.y-13,38,34);g.fillStyle='#8a8c85';g.fillRect(p.x-19,p.y-17,38,34);g.fillStyle='#a3a59d';g.fillRect(p.x-19,p.y-17,38,4);
+  if(ready){const bob=Math.sin(time*2.4)*2;g.save();g.translate(p.x,p.y-4+bob);
+    g.fillStyle='#b8860b';g.beginPath();g.moveTo(-9,10);g.lineTo(9,10);g.lineTo(6,2);g.lineTo(-6,2);g.fill();
+    g.fillStyle='#d4af37';g.beginPath();g.ellipse(0,-2,7,9,0,0,7);g.fill();g.beginPath();g.arc(0,-12,6,0,7);g.fill();
+    g.fillStyle='#fff3b0';g.beginPath();g.arc(-2,-14,2,0,7);g.fill();g.fillStyle='#c9302c';g.fillRect(-3,-4,2,2);g.fillStyle='#2f6fd6';g.fillRect(1,-4,2,2);g.restore()}
+  drawPlayerPed(g);
+  for(const q of parts){g.globalAlpha=Math.max(0,q.life/q.max)*(q.spark?1:.6);g.fillStyle=q.col;g.beginPath();g.arc(q.x,q.y-(q.z||0)*.5,q.r,0,7);g.fill()}
+  g.globalAlpha=1;
+  drawBullets(g);
+  // darkness with a torch around you; the entrance room is dimly lit
+  const inRoom=ped.y>MZ.MH,dark=inRoom?.55:.95,vx0=cam.x-VW/2/cam.z-40,vy0=cam.y-VH/2/cam.z-40,vw=VW/cam.z+80,vh=VH/cam.z+80;
+  const fl=1+Math.sin(time*13)*.02+(hash2(Math.floor(time*9),1,1)<.04?-.12:0),gr=g.createRadialGradient(ped.x,ped.y,40*fl,ped.x,ped.y,250*fl);
+  gr.addColorStop(0,'rgba(3,4,6,0)');gr.addColorStop(.55,`rgba(3,4,6,${dark*.55})`);gr.addColorStop(1,`rgba(3,4,6,${dark})`);g.fillStyle=gr;g.fillRect(vx0,vy0,vw,vh);
+  g.globalCompositeOperation='lighter';
+  for(const L of MZ.lamps){const a=.5+.5*Math.sin(time*2+L.ph);if(Math.abs(L.x-cam.x)>vw||Math.abs(L.y-cam.y)>vh)continue;g.globalAlpha=.1+a*.1;g.drawImage(SPR.red,L.x-70,L.y-70,140,140);g.globalAlpha=.6*a;g.fillStyle='#ff4655';g.beginPath();g.arc(L.x,L.y-MZ.C/2+MZ.WT,3,0,7);g.fill()}
+  if(ready){g.globalAlpha=.22+Math.sin(time*3)*.06;g.drawImage(SPR.warm,p.x-110,p.y-110,220,220)}
+  if(inRoom){g.globalAlpha=.25;g.drawImage(SPR.warm,MZ.gx-160,MZ.H-200,320,240)}
+  g.globalAlpha=1;g.globalCompositeOperation='source-over';
+  drawCrosshair(g);
+}}
+// the bunker block and its blast door, drawn on the island
+{const orig=drawBuildings;drawBuildings=function(g,list,night){
+  const L=ISLE2.lot,i=list.indexOf(L);if(i<0)return orig(g,list,night);
+  list.splice(i,1);orig(g,list,night);drawBunkerBlock(g,L);
+}}
+function drawBunkerBlock(g,b){
+  const H=b.hgt,ox=(b.cx-cam.x)*H*PK,oy=(b.cy-cam.y)*H*PK,{x,y,w,h}=b;
+  const quad=(ax,ay,bx,by,col)=>{g.fillStyle=col;g.beginPath();g.moveTo(ax,ay);g.lineTo(bx,by);g.lineTo(bx+ox,by+oy);g.lineTo(ax+ox,ay+oy);g.closePath();g.fill()};
+  if(ox>0)quad(x,y,x,y+h,'#4a4c47');if(ox<0)quad(x+w,y,x+w,y+h,'#3f413c');if(oy>0)quad(x,y,x+w,y,'#575953');
+  if(oy<0){quad(x,y+h,x+w,y+h,'#3a3c37');const d=ISLE2.sh.door;g.fillStyle='#23262a';g.beginPath();g.moveTo(d.x-30,y+h);g.lineTo(d.x+30,y+h);g.lineTo(d.x+30+ox*.8,y+h+oy*.8);g.lineTo(d.x-30+ox*.8,y+h+oy*.8);g.fill()}
+  const rx=x+ox,ry=y+oy;g.fillStyle='#6a6d66';g.fillRect(rx,ry,w,h);
+  g.fillStyle='rgba(0,0,0,.12)';for(let i=0;i<5;i++)g.fillRect(rx+10+i*(w-20)/5,ry+8,2,h-16);
+  g.fillStyle='#4f524c';g.fillRect(rx+18,ry+18,26,26);g.fillRect(rx+w-44,ry+18,26,26);g.fillStyle='#2b2d2a';for(let i=0;i<4;i++){g.fillRect(rx+21,ry+22+i*6,20,2);g.fillRect(rx+w-41,ry+22+i*6,20,2)}
+  g.save();g.translate(rx+w/2,ry+h/2+8);g.rotate(-cam.rot);g.fillStyle='rgba(20,20,20,.55)';g.font='900 22px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText('9',0,0);g.restore();
+  // blast door and hazard frame on the ground in front
+  const d=ISLE2.sh.door;g.save();g.beginPath();g.rect(d.x-40,y+h,80,12);g.clip();for(let xx=d.x-60;xx<d.x+60;xx+=16){g.fillStyle='#f2c14a';g.beginPath();g.moveTo(xx,y+h+12);g.lineTo(xx+8,y+h+12);g.lineTo(xx+20,y+h);g.lineTo(xx+12,y+h);g.fill()}g.restore();
+}
+function drawIsle2World(g,vis){
+  const S=ISLE2;if(!vis(S.x,S.y,S.rx*T+200))return;
+  const hp=S.heli;g.strokeStyle='rgba(242,193,74,.85)';g.lineWidth=5;g.beginPath();g.arc(hp.x,hp.y,70,0,7);g.stroke();
+  g.save();g.translate(hp.x,hp.y);g.rotate(-cam.rot);g.fillStyle='rgba(242,193,74,.85)';g.font='900 64px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText('H',0,4);g.restore();
+  const L=S.lot;g.save();g.translate(L.x-50,L.y+L.h+40);g.rotate(-cam.rot);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(-44,-10,92,28);g.fillStyle='#5a4632';g.fillRect(-2,-4,4,24);g.fillStyle='#d9d2bf';g.fillRect(-46,-16,92,24);
+  g.fillStyle='#8a2a22';g.font='900 12px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText('KEEP OUT',0,-4);g.restore();
+}
+{const orig=drawHomesWorld;drawHomesWorld=function(g,vis){orig(g,vis);drawIsle2World(g,vis)}}
+// first visit
+let isle2T=0;
+{const orig=updateFires;updateFires=function(dt){orig(dt);isle2T-=dt;if(isle2T>0)return;isle2T=1;
+  const pp=playerPos();
+  if(!save.isle2Found&&mode==='free'&&Math.hypot(pp.x-ISLE2.x,pp.y-ISLE2.y)<ISLE2.rx*T*.95&&(pp.z||0)<40){save.isle2Found=true;persist();banner('Secret found','Sentinel Isle · there’s an old bunker here',3);[440,554,659,880,1109].forEach((f,i)=>setTimeout(()=>beep(f,.25,'triangle',.06),i*120))}
+}}
+
+// =====================================================================
+// pawn shops
+// =====================================================================
+SHOPDEF.pawn={label:'Pawn shop',names:['Lucky Pawn','Harbor Pawn & Loan'],sign:'PAWN',col:'#d9a441',floor:'#6b5a45',rob:{time:5,cash:[500,1100],heat:1.3,txt:'Emptying the register'},line:'Cash for gold, guitars and anything shiny. No questions asked.'};
+ITEMS.pawn=[];PLACECOL.pawn='#d9a441';
+{
+  const want=[1,1,0,0,0];
+  const mk=(m,hs)=>lots.filter(l=>(l.kind==='bld'||(hs&&l.kind==='house'))&&!l.shop&&!l.home&&l.w>=m&&l.h>=m&&!inAir(l.cx,l.cy,100)&&!inBase(l.cx,l.cy,200))
+    .map(l=>({l,d:lotDoor(l),r:regionAt(l.cx,l.cy),h:hash2(Math.round(l.cx),Math.round(l.cy),5151)})).filter(c=>c.d&&c.r>=0).sort((a,b)=>a.h-b.h);
+  const pool=mk(70,false).concat(mk(56,true));
+  for(let r=0;r<5;r++){let n=0;
+    for(const c of pool){
+      if(n>=want[r])break;if(c.r!==r||c.l.shop)continue;
+      if(shops.some(s=>Math.hypot(s.lot.cx-c.l.cx,s.lot.cy-c.l.cy)<(s.type==='pawn'?1600:260))||workshops.some(g=>Math.hypot(g.lot.cx-c.l.cx,g.lot.cy-c.l.cy)<260))continue;
+      if(c.l.kind==='house'){c.l.kind='bld';c.l.hgt=Math.max(c.l.hgt||0,40)}
+      c.l.shop='pawn';const d=c.d,cnt=shops.filter(s=>s.type==='pawn').length;
+      const sh={type:'pawn',lot:c.l,door:d,name:SHOPDEF.pawn.names[cnt%2],id:'pawn'+cnt,robbedUntil:0,sx:d.x+d.nx*24,sy:d.y+d.ny*24,region:r};
+      shops.push(sh);places.push({name:sh.name,type:'pawn',x:sh.sx,y:sh.sy,shop:sh});n++;
+    }
+  }
+}
+{const orig=buildInterior;buildInterior=function(sh){
+  if(sh.type!=='pawn')return orig(sh);
+  const solids=[],deco=[],npcs=[],lights=[],S=(x,y,w,h,k,o)=>solids.push(Object.assign({x,y,w,h,k},o||{})),D=(k,o)=>deco.push(Object.assign({k},o));
+  S(0,0,IW,18,'wall');S(0,0,18,IH,'wall');S(IW-18,0,18,IH,'wall');S(0,IH-18,IW/2-46,18,'wall');S(IW/2+46,IH-18,IW/2-46,18,'wall');
+  const counter={x:170,y:120,w:300,h:28,k:'counter'};
+  S(40,60,30,300,'rack');S(IW-70,60,30,300,'rack');
+  S(170,230,90,40,'case');S(380,230,90,40,'case');S(270,330,100,36,'case',{island:true});
+  S(40,370,44,34,'crate');S(560,372,40,32,'crate');
+  D('poster',{x:60,y:4,w:110,col:'#d9a441',txt:'WE BUY GOLD'});D('poster',{x:470,y:4,w:110,col:'#e0574f',txt:'CASH LOANS'});D('clock',{x:320,y:9});D('cam',{x:26,y:26});D('cam',{x:IW-28,y:26});
+  npcs.push({x:320,y:300,hx:320,hy:300,tx:320,ty:300,a:-Math.PI/2,kind:'customer',up:0,step:0,wait:2,shirt:'#5a5f66',skin:'#c68b62',hair:'#2a211c',roam:[[320,300],[200,200],[440,200]]});
+  lights.push([320,160,'#ffe7b8'],[200,250,'#ffe7b8'],[440,250,'#ffe7b8'],[320,350,'#ffe7b8']);
+  solids.push(counter);
+  return{sh,def:SHOPDEF.pawn,solids,deco,npcs,lights,counter,clerk:{x:320,y:86,a:Math.PI/2,up:0,step:0},prog:0,robbed:false,alarm:0,shots:false,idle:0};
+}}
+{const orig=drawFloor;drawFloor=function(t){
+  if(t!=='pawn')return orig(t);const g=ctx;g.fillStyle='#6b5a45';g.fillRect(0,0,IW,IH);
+  for(let y=0,r=0;y<IH;y+=20,r++)for(let x=-(r%3)*40;x<IW;x+=120){g.fillStyle=shade('#6b5a45',Math.round((hash2(x,r,11)-.5)*20));g.fillRect(x+1,y+1,118,18)}
+}}
+{const orig=drawPed;drawPed=function(g,p,o){if(interior&&interior.sh&&interior.sh.type==='pawn'&&p===interior.clerk&&o)o=Object.assign({},o,{shirt:'#3a2f24',cap:null});return orig(g,p,o)}}
+function renderPawn(){
+  const I=interior;$('shopType').textContent=I.def.label;$('shopName').textContent=I.sh.name;$('shopCash').textContent=money(save.cash);
+  $('shopLine').textContent=I.def.line+' Draw a weapon and keep it on the clerk to empty the register.';
+  const have=!!save.idol;
+  $('shopItems').innerHTML=`<div class="item"><span class="nm">Golden Idol</span><span class="ds">${have?'Solid gold, jewelled eyes. “Where did you find this?”':'“Bring me something special. Folks say there’s an old army bunker on an island nobody put on the map, way out past the west coast.”'}</span><span class="pr ${have?'':'cant'}">${money(IDOL_PRICE)}</span><button class="btn sm" data-pw="idol" ${have?'':'disabled'}>${have?'Sell':'Not carrying'}</button></div>`+
+    (save.idolsSold?`<p class="hint">Idols sold here: ${save.idolsSold}${save.mazeBest?' · your best maze time '+Math.floor(save.mazeBest/60)+':'+String(Math.floor(save.mazeBest%60)).padStart(2,'0'):''}</p>`:'');
+}
+{const orig=renderShop;renderShop=function(){if(interior&&interior.sh.type==='pawn'){renderPawn();return}orig()}}
+$('shopItems').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-pw]');if(!b||!interior)return;e.stopImmediatePropagation();
+  if(b.dataset.pw==='idol'&&save.idol){save.idol=false;save.idolsSold=(save.idolsSold||0)+1;persist();store.set(SAVE_KEY,save);earn(IDOL_PRICE,'Sold the Golden Idol');banner(money(IDOL_PRICE),'Sold the Golden Idol',2.4);[660,880,1100,1320].forEach((f,i)=>setTimeout(()=>beep(f,.15,'square',.05),i*90))}
+  renderPawn();$('shopClose').focus();
+},true);
 // camera modes: how far ahead to look, how fast to follow, zoom and rotation
 const CAM_MODES={
   north:{name:'North up',look:.3,follow:4,zoom:1,rot:'none'},
@@ -3878,7 +4158,8 @@ function updateHUD(speed){
     else if(interior&&interior.home){const t=nearHomeThing();if(t==='bed')pr.push(['',`${K('E','Y')}Sleep until morning · saves the game`,'act']);else if(t==='desk')pr.push(interior.guest?['info',interior.guest.name+'’s computer']:['',`${K('E','Y')}Home computer · decorate, set spawn${mpOn()?', invite players':''}`,'act']);else if(t==='fridge')pr.push(['',`${K('E','Y')}Raid the fridge`,'act']);if(interior.guest&&ped.y<IH-90&&!t)pr.push(['info','Guest at '+interior.guest.name+'’s house']);if(ped.y>IH-90)pr.push(['info','Walk out the front door to leave'])}
     else if(interior){
       const I=interior;
-      if(I.dealer){const b=nearTurn();
+      if(I.bunker)bunkerPrompts(pr);
+      else if(I.dealer){const b=nearTurn();
         if(b){const own=save.owned.includes(b.m.id);pr.push(['',`${K('E','Y')}${b.m.name} · ${own?'owned':money(b.m.price)}`,'act'])}
         else if(nearCounter())pr.push(['',`${K('E','Y')}Sales desk · see every car here`,'act']);
       }else if(I.garage){const b=nearBay();
@@ -3889,8 +4170,9 @@ function updateHUD(speed){
       }else if(I.sh.type==='jobs'){if(nearCounter())pr.push(['',`${K('E','Y')}See today’s jobs`,'act'])
       }else if(nearCounter()){if(I.robbed||I.sh.robbedUntil>time)pr.push(['warn','The clerk won’t serve you']);else if(I.sh.type!=='bank')pr.push(['',`${K('E','Y')}Shop at the counter`,'act'])}
       if(I.def.rob&&!I.robbed&&I.sh.robbedUntil<time&&I.prog===0)pr.push(['info',ped.weapon?'Keep your weapon on the clerk to rob this place':ownedWeapons().length?`Draw a weapon (${pad.using?'LB/RB':'Q'}) to rob this place`:'Buy a gun to rob places like this']);
-      if(ped.y>IH-90)pr.push(['info',I.garage?'Walk out the door to go back to your car':'Walk out the door to leave']);
+      if(ped.y>IH-90&&!I.bunker)pr.push(['info',I.garage?'Walk out the door to go back to your car':'Walk out the door to leave']);
     }else if(onFoot){
+      if(nearBunker())pr.push(['',`${K('E','Y')}Enter Bunker 9`,'act']);
       const hm=nearHome(),hv=hm&&!ownsHome(hm)&&mpInviteFor(hm);if(hm)pr.push(['',ownsHome(hm)?`${K('E','Y')}Go inside ${hm.name}`:hv?`${K('E','Y')}Visit ${hv.name}’s house`:`${K('E','Y')}For sale · ${hm.name} · ${money(hm.price)}`,'act']);
       const sh=nearShop();if(sh)pr.push(['',`${K('E','Y')}Enter ${sh.name}`,'act']);
       const e=nearEvent();if(e){if(e.type==='garage')pr.push(['',`${K('E','Y')}${e.name}`,'act']);else if(e.type==='hide')pr.push([police.heat>=1?'':'info',police.heat>=1?`${K('E','Y')}Hide in ${e.name}`:e.name+' · come here when the police are after you',police.heat>=1?'act':'']);else if(e.type==='chop')pr.push(['info',e.name+' · bring a stolen car to sell it']);else pr.push(['info','Get in a car to start '+e.name])}
@@ -3937,7 +4219,7 @@ function updateHUD(speed){
   }else if(job){html2+=jobPanel();
   }else{
     const list=places.map((p,i)=>({p,i,d:Math.hypot(p.x-pp.x,p.y-pp.y)})).sort((a,b)=>a.d-b.d).slice(0,touch.on?0:5);
-    const lbl={airport:'Air',base:'Base',dealer:'Deals',sprint:'Race',circuit:'Loop',drift:'Drift',garage:'Garage',chop:'Chop',hide:'Safe',jobs:'Jobs',home:'Home',tune:'Tune',clothes:'Style',casino:'Bets',gun:'Guns',mart:'24/7',diner:'Food',jewel:'Gems',bank:'Bank'};
+    const lbl={airport:'Air',base:'Base',dealer:'Deals',sprint:'Race',circuit:'Loop',drift:'Drift',garage:'Garage',pawn:'Pawn',chop:'Chop',hide:'Safe',jobs:'Jobs',home:'Home',tune:'Tune',clothes:'Style',casino:'Bets',gun:'Guns',mart:'24/7',diner:'Food',jewel:'Gems',bank:'Bank'};
     if(list.length)html2+=`<p class="eyebrow">Nearby</p><ul class="rlist">`+list.map(({p,i,d})=>{const m=p.ev&&p.ev.type!=='garage'?eventMedal(p.ev):null;const on=waypoint&&waypoint.x===p.x&&waypoint.y===p.y;
       return `<li data-p="${i}" tabindex="0" class="${on?'on':''}"><span class="chip c-${p.type}">${lbl[p.type]}</span>${p.ev&&p.ev.type!=='garage'?`<span class="medaldot ${m||''}"></span>`:''}<span class="n">${p.name}</span><span class="t">${Math.round(d*.083)} m</span></li>`}).join('')+`</ul>`;
     html2+=`<div class="tok"><span>Tokens <b>${save.tokens.length}/${tokens.length}</b></span><span>Jumps <b>${save.jumps.length}/${ramps.length}</b></span><span>Traps <b>${Object.keys(save.traps).length}/${traps.length}</b></span></div>`;
@@ -5306,8 +5588,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.30';
+const VERSION='2.31';
 const CHANGELOG=[
+  ['2.31','Bunker 9',['A second secret island somewhere off the far west coast, not shown on any map, with a helipad and a hidden sandbar you can drive along','An old army bunker on the island that you can walk into','Inside is a pitch-black maze: find your way with a torch past flickering red emergency lights','A Golden Idol waits at the end of the maze; your best maze time is saved, and a new idol turns up 20 minutes after you take one','New pawn shops (downtown and on Palm Key) buy the Golden Idol for $250,000, and can be robbed like any store']],
   ['2.30','Open house',['Settings has a Player name box: type a new name and press Save name or Enter, and everyone sees it right away','Invite other players to your house: use the home computer, pick a player and press Invite','Invited players get a waypoint to your front door and can walk in with E / Y while you are online','Guests see your floor, walls, furniture and extras exactly as you decorated them, and you see each other inside','Guests can raid the fridge and nap, but only the owner can use the home computer']],
   ['2.29','See the gunfight',['Multiplayer: you now see other players’ bullets, shotgun blasts, sniper shots, rockets and tank shells, with muzzle flashes, gunshot sounds that fade with distance and explosions where rockets land','Multiplayer: players in the same shop, bank, garage or dealership now see each other inside, with name tags, health bars and chat bubbles','You can shoot and be shot by other players inside shops too; your own house stays private']],
   ['2.28','Room for every car',['Walk-in garages now have a car lift panel by the right wall: press E / Y to swap the six bays to your next six cars, so every car you own can be picked','The garage opens on the page with the car you are driving, and the panel shows which page you are on','The garage car list now scrolls on its own, with your current ride at the top and a count of how many cars you own','Scroll the car list with the mouse wheel, a swipe or the right stick on a controller']],
@@ -5465,7 +5748,7 @@ cam.x=P.x;cam.y=P.y;
 spawnBaseVehicles(true);
 renderTitle();setTimeout(()=>$('go').focus(),50);
 try{document.fonts&&document.fonts.ready.then(()=>chunkCache.clear())}catch(e){}
-window.__xtc={bullets,get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
+window.__xtc={ISLE2,MZ,takeIdol,bullets,get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
 requestAnimationFrame(t=>{last=t;frame(t)});
 
 // =====================================================================
