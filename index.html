@@ -5738,8 +5738,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.42';
+const VERSION='2.43';
 const CHANGELOG=[
+  ['2.43','Beached for good',['Once a boat is beached it stays there: reverse no longer pulls it back off the sand. Hop out and walk, or grab another boat']],
   ['2.42','One message at a time',['If your car is wrecked and the blast kills you, only WASTED shows now; the WRECKED banner no longer appears on top of it']],
   ['2.41','Stuck on the sand',['A boat counts as beached as soon as its bow touches land: no throttle, no steering and no more sliding around like it is on ice','The sand grips the hull so it stops quickly and stays put; reverse slowly while there is water behind it to get back off']],
   ['2.40','Pricier ammo drops',['Phone ammo drops now charge for the rounds you actually get, at double the gun-shop price, plus a $750 delivery fee','Buying at a gun shop is always the cheaper option']],
@@ -6665,8 +6666,6 @@ function stepBoat(c,ctrl,h,isP){
     const f=(water?1800:3200)*h;vf=Math.abs(vf)<=f?0:vf-Math.sign(vf)*f;const fl=3200*h;vl=Math.abs(vl)<=fl?0:vl-Math.sign(vl)*fl;
     if(Math.abs(vf)>60&&Math.random()<.4)puff(c.x,c.y,'#e2cc98',1,40,7,.6);
     c.steer=0;
-    // the only way off: reverse slowly while there is water behind the boat
-    if(ctrl.b&&vf<=0&&[.5,1,1.8,2.6].some(q=>onWaterAt(c.x-ca*m.len*q,c.y-sa*m.len*q)))vf=-80;
   }
   c.vx=ca*vf-sa*vl;c.vy=sa*vf+ca*vl;
   c.x=clamp(c.x+c.vx*h,40,WORLD-40);c.y=clamp(c.y+c.vy*h,40,WORLD-40);
