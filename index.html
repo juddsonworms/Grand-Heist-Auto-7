@@ -5301,8 +5301,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.28';
+const VERSION='2.29';
 const CHANGELOG=[
+  ['2.29','See the gunfight',['Multiplayer: you now see other players’ bullets, shotgun blasts, sniper shots, rockets and tank shells, with muzzle flashes, gunshot sounds that fade with distance and explosions where rockets land','Multiplayer: players in the same shop, bank, garage or dealership now see each other inside, with name tags, health bars and chat bubbles','You can shoot and be shot by other players inside shops too; your own house stays private']],
   ['2.28','Room for every car',['Walk-in garages now have a car lift panel by the right wall: press E / Y to swap the six bays to your next six cars, so every car you own can be picked','The garage opens on the page with the car you are driving, and the panel shows which page you are on','The garage car list now scrolls on its own, with your current ride at the top and a count of how many cars you own','Scroll the car list with the mouse wheel, a swipe or the right stick on a controller']],
   ['2.27','Auto updates',['Self-hosted servers can pull the newest game straight from GitHub','Players get a message when a new version is ready, so they know to reload']],
   ['2.26','Watch the chase',['In multiplayer you now see the police chasing other players: their cruisers, SWAT trucks and helicopters with flashing sirens, and officers on foot','Wanted stars show next to their name']],
@@ -5457,7 +5458,7 @@ cam.x=P.x;cam.y=P.y;
 spawnBaseVehicles(true);
 renderTitle();setTimeout(()=>$('go').focus(),50);
 try{document.fonts&&document.fonts.ready.then(()=>chunkCache.clear())}catch(e){}
-window.__xtc={get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
+window.__xtc={bullets,get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
 requestAnimationFrame(t=>{last=t;frame(t)});
 
 // =====================================================================
@@ -5937,7 +5938,7 @@ function mpSend(dt){
   const st={v:1,x:mpR0(pp.x),y:mpR0(pp.y),vx:mpR0(pp.vx||0),vy:mpR0(pp.vy||0),f:onFoot?1:0,a:mpR1(onFoot?ped.aim:P.a),
     st:inCar?P.m.style:'',c:inCar?P.col:'',l:inCar?P.m.len:0,w:inCar?P.m.wid:0,z:inCar?mpR0(P.z||0):0,dead:inCar&&P.dead?1:0,
     gun:onFoot?(ped.weapon||''):'',of:save.outfit||'street',pc:save.paint,hp:mpR0(onFoot?ped.hp:P.hp),h:Math.floor(police.heat),
-    in:interior?1:0,hide:hiding?1:0,nick:(save.nick||'').slice(0,20),cops:mpCops(),hits:MP.hits.slice(-6),say:MP.say,t:Date.now()%100000};
+    in:interior?1:0,iid:mpMyIid(),hide:hiding?1:0,shots:mpShotsOut(),nick:(save.nick||'').slice(0,20),cops:mpCops(),hits:MP.hits.slice(-6),say:MP.say,t:Date.now()%100000};
   const sig=JSON.stringify(st).replace(/"t":\d+/,'');
   if(sig===MP.lastSig)return;MP.lastSig=sig;
   MP.room.presence(st).catch(()=>{});
@@ -5950,7 +5951,10 @@ function mpRead(dt){
     let r=MP.remote.get(p.peer);
     if(!r){r={peer:p.peer,x:s.x,y:s.y,a:s.a||0,step:0,col:mpColor(p.peer),sayId:null,bubble:null,bubbleT:0,lastT:null};MP.remote.set(p.peer,r)}
     r.s=s;if(p.by&&!MP.names[p.by]&&time-(MP.nameT||-99)>3){MP.nameT=time;mpResolveNames()}r.name=mpName(p);
+    {const sp=mpSpace(s,p.peer);r.here=sp===mpMySpace();if(sp!==r.space){r.space=sp;r.x=s.x;r.y=s.y;r.rx=s.x;r.ry=s.y;r.a=s.a||0;r.age=0;r.lastT=s.t}}
     if(s.t!==r.lastT){r.lastT=s.t;r.rx=s.x;r.ry=s.y;r.age=0}
+    // other players' shots: spawn look-alike bullets (the damage is handled by the shooter's game)
+    if(Array.isArray(s.shots)&&r.here)mpSpawnShots(s.shots,r);
     // hits other players landed on me
     if(Array.isArray(s.hits))for(const h of s.hits){if(!h||h.to!==MP.me||typeof h.n!=='number'||typeof h.d!=='number')continue;const k=p.peer;if((MP.seen[k]||0)>=h.n)continue;MP.seen[k]=h.n;mpTakeHit(Math.min(120,Math.max(0,h.d)),r)}
     // chat bubbles
@@ -5968,15 +5972,16 @@ function mpRead(dt){
 }
 let mpLastHitMsg=0;
 function mpTakeHit(d,r){
-  if(DEV.god||interior||hiding)return;
+  if(DEV.god||hiding||!r.here)return;
   if(onFoot){hurtPed(d,r.x,r.y)}else if(!P.dead){damage(P,d*.6);sparks(P.x,P.y,4)}
   if(time-mpLastHitMsg>3){mpLastHitMsg=time;addFeed(r.name+' is shooting at you',null,true)}
 }
 function mpHit(r,d){MP.hits.push({to:r.peer,n:++MP.seq,d:Math.round(d)});if(MP.hits.length>12)MP.hits.shift();MP.sendT=0}
-const mpVisible=r=>r.s&&!r.s.in&&!r.s.hide;
+const mpVisible=r=>r.s&&r.here&&!r.s.hide;
 // our bullets and explosions can hit other players
 {const orig=bulletHit;bulletHit=function(b){
-  if(b.from==='p'&&!interior&&mpOn())for(const r of MP.remote.values()){if(!mpVisible(r))continue;const s=r.s,rad=s.f?11:Math.max(12,(s.l||36)/2),hz=s.f?0:(s.z||0);if((hz>20)!==!!b.air)continue;
+  if(b.from==='m')return mpFxBulletHit(b);
+  if(b.from==='p'&&mpOn())for(const r of MP.remote.values()){if(!mpVisible(r))continue;const s=r.s,rad=s.f?11:Math.max(12,(s.l||36)/2),hz=s.f?0:(s.z||0);if((hz>20)!==!!b.air)continue;
     if(Math.hypot(b.x-r.x,b.y-r.y)<rad){if(!b.ex)mpHit(r,b.dmg||10);sparks(b.x,b.y,3);return true}}
   return orig(b);
 }}
@@ -5992,6 +5997,44 @@ function mpCollide(){
     if(d<rs&&d>.01){const nx=dx/d,ny=dy/d,pen=rs-d;P.x+=nx*pen;P.y+=ny*pen;const vn=(P.vx-(s.vx||0))*nx+(P.vy-(s.vy||0))*ny;if(vn<0){P.vx-=nx*vn*1.4;P.vy-=ny*vn*1.4;if(-vn>120){addShake(Math.min(.5,-vn/600));crashSnd(Math.min(1,-vn/700));sparks(P.x-nx*P.r,P.y-ny*P.r,8)}}}
   }
 }
+// ---------- shared spaces (the street, or the same shop) ----------
+function mpMyIid(){if(!interior||interior.home)return '';const sh=interior.sh;return sh?String(sh.id||(sh.type+':'+sh.name)).slice(0,40):''}
+const mpMySpace=()=>interior?(interior.home?'me-home':'i:'+mpMyIid()):'w';
+const mpSpace=(s,peer)=>s.in?(s.iid?'i:'+s.iid:'home:'+peer):'w';
+// ---------- shots other players can see ----------
+MP.shots=[];MP.shotN=0;MP.shotSeen={};
+function mpShot(b){
+  if(!mpOn())return;const w=onFoot&&ped.weapon&&WEAPONS[ped.weapon];
+  const f=(b.missile?1:0)|(b.shell?2:0)|(b.sniper?4:0)|(b.air?8:0)|(b.ex?16:0);
+  MP.shots.push({t:time,d:[++MP.shotN,Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),Math.round(b.life*100),f,w?w.snd:0]});
+  if(MP.shots.length>40)MP.shots.shift();MP.sendT=Math.min(MP.sendT,.04);
+}
+function mpShotsOut(){const out=[];for(const q of MP.shots)if(time-q.t<.45)out.push(q.d);return out.length?out.slice(-24):null}
+{const push0=Array.prototype.push;bullets.push=function(...a){for(const b of a)if(b&&b.from==='p')try{mpShot(b)}catch(e){}return push0.apply(this,a)}}
+function mpSpawnShots(list,r){
+  const seen=MP.shotSeen[r.peer]||0;let top=seen,snd=0,sx=0,sy=0;
+  for(const q of list){if(!Array.isArray(q)||q.length<7)continue;const [n,x,y,vx,vy,life,f,fr]=q;if(typeof n!=='number'||n<=seen||![x,y,vx,vy].every(Number.isFinite))continue;top=Math.max(top,n);
+    if(seen===0&&MP.shotSeen[r.peer]===undefined)continue; // first sight of this player: skip old shots
+    bullets.push({x,y,vx,vy,life:Math.min(1.5,Math.max(.05,(life||55)/100)),dmg:0,from:'m',missile:!!(f&1),shell:!!(f&2),sniper:!!(f&4),air:!!(f&8),mex:!!(f&16)});
+    if(!snd){snd=fr||900;sx=x;sy=y;parts.push({x,y,vx:0,vy:0,r:7,life:.06,max:.06,col:'#ffd27a',spark:true})}}
+  MP.shotSeen[r.peer]=top;
+  if(snd){const pp=playerPos(),d=Math.hypot(pp.x-sx,pp.y-sy);if(d<1400)gunSnd(snd,.07,clamp(1-d/1400,.08,.9))}
+}
+function mpFxBoom(x,y){puff(x,y,'#fff2b0',8,120,20,.25);puff(x,y,'#ffb347',22,240,17,.55);puff(x,y,'#ff5a1a',14,180,14,.7);puff(x,y,'#3a3a3a',28,170,22,2.2);sparks(x,y,26);shocks.push({x,y,t:0,max:.4,r:190});
+  const pp=playerPos(),d=Math.hypot(pp.x-x,pp.y-y);if(d<1400){crashSnd(clamp(1-d/1400,.1,.9));noiseBurst(180,.8,.5*clamp(1-d/1400,.1,1))}if(d<700)addShake((700-d)/700)}
+// look-alike bullets stop at walls, buildings, trees, cars and people, but never deal damage
+function mpFxBulletHit(b){
+  let hit=false;
+  if(interior)hit=interiorBulletHit(b);
+  else{const tx=Math.floor(b.x/T),ty=Math.floor(b.y/T);if(!inb(tx,ty))return true;
+    if(!b.air){const k=idx(tx,ty),li=lotGrid[k];if(li>=0){const l=lots[li];if(b.x>l.x&&b.x<l.x+l.w&&b.y>l.y&&b.y<l.y+l.h){sparks(b.x,b.y,3);hit=true}}
+      if(!hit){const tl=treeGrid.get(k);if(tl)for(const t of tl)if(Math.hypot(b.x-t.x,b.y-t.y)<t.r*.55){hit=true;break}}
+      if(!hit)for(const t of traffic)if(Math.abs(b.x-t.x)<t.r+2&&Math.abs(b.y-t.y)<t.r+2){sparks(b.x,b.y,3);hit=true;break}}}
+  if(!hit){const pp=playerPos(),rad=onFoot?11:P.r+2;if(!b.air===((onFoot?0:(P.z||0))<20)&&Math.hypot(b.x-pp.x,b.y-pp.y)<rad){sparks(b.x,b.y,3);hit=true}}
+  if(hit&&b.mex){b.mex=false;mpFxBoom(b.x,b.y)}
+  return hit;
+}
+{const orig=updateBullets;updateBullets=function(dt){for(const b of bullets)if(b.from==='m'&&b.mex&&b.life-dt<=0){b.mex=false;mpFxBoom(b.x,b.y)}return orig(dt)}}
 // ---------- drawing ----------
 function mpOutfit(id){return OUTFITS.find(o=>o.id===id)||OUTFITS[0]}
 function mpDrawWorld(g,vis){
@@ -6000,7 +6043,7 @@ function mpDrawWorld(g,vis){
     if(!mpVisible(r)||!vis(r.x,r.y,120))continue;const s=r.s;
     if(s.f){const o=mpOutfit(s.of);g.save();g.translate(r.x,r.y);g.scale(1.2,1.2);g.translate(-r.x,-r.y);drawPed(g,{x:r.x,y:r.y,a:r.a,step:r.step},{shirt:o.shirt,jacket:o.jacket===null?(s.pc||'#2f6fd6'):o.jacket,pants:o.pants,shoes:o.shoes,hair:'#2a211c',hairStyle:o.hairStyle,capCol:o.capCol,skin:'#c68b62',gun:s.gun||null,noDress:true,noPack:true});g.restore()}
     else{const v={x:r.x,y:r.y,a:r.a,style:s.st||'sedan',col:s.dead?'#2b2622':(s.c||'#888'),len:s.l||36,wid:s.w||19,z:s.z||0,dead:!!s.dead,rotor:time*40,burn:false,hp:s.hp};drawShadow(g,v);drawBody(g,v)}
-    if(r.cops)for(const o of r.cops.values()){if(!vis(o.x,o.y,80))continue;
+    if(r.cops&&!interior)for(const o of r.cops.values()){if(!vis(o.x,o.y,80))continue;
       if(o.t===3||o.t===4){drawPed(g,{x:o.x,y:o.y,a:o.a,step:o.step},o.t===4?{shirt:'#15181c',pants:'#15181c',shoes:'#10151a',cap:'#15181c',vest:'#2b3035',noPack:true,gun:'smg',skin:'#c9936b',noDress:true}:{shirt:'#2a3a5c',pants:'#1d2433',shoes:'#10151a',cap:'#1a2440',badge:true,noPack:true,gun:'pistol',skin:'#c9936b',noDress:true});continue}
       const heli=o.t===2,v={x:o.x,y:o.y,a:o.a,style:heli?'heli':o.t===1?'swat':'police',col:heli?'#1f2328':o.t===1?'#15181c':'#1f2328',len:heli?54:o.t===1?44:38,wid:heli?16:o.t===1?22:20,z:heli?o.z:0,rotor:time*40,siren:!!o.act,police:heli};
       drawShadow(g,v);drawBody(g,v);
@@ -6010,7 +6053,7 @@ function mpDrawWorld(g,vis){
   }
 }
 function mpDrawTags(g){
-  if(!mpOn()||interior)return;
+  if(!mpOn()||(interior&&interior.home))return;
   for(const r of MP.remote.values()){
     if(!mpVisible(r))continue;const s=r.s,lift=(s.f?26:Math.max(28,(s.l||36)*.7))+(s.z||0)*.35;
     if(Math.abs(r.x-cam.x)>2200||Math.abs(r.y-cam.y)>2200)continue;
@@ -6037,7 +6080,7 @@ function mpDrawBig(){
     bctx.fillStyle='rgba(0,0,0,.75)';bctx.fillText(r.name.toUpperCase(),x+1,y-11*DPR+1);bctx.fillStyle='#fff';bctx.fillText(r.name.toUpperCase(),x,y-11*DPR)}
 }
 {const orig=drawHomesWorld;drawHomesWorld=function(g,vis){orig(g,vis);mpDrawWorld(g,vis)}}
-{const orig=drawBullets;drawBullets=function(g){orig(g);if(g===ctx)mpDrawTags(g)}}
+{const orig=drawBullets;drawBullets=function(g){if(g===ctx&&interior&&!interior.home)mpDrawWorld(g,()=>true);orig(g);if(g===ctx)mpDrawTags(g)}}
 {const orig=drawMini;drawMini=function(){orig();mpDrawMini()}}
 {const orig=drawBigMap;drawBigMap=function(){orig();mpDrawBig()}}
 // ---------- online chip + chat ----------
