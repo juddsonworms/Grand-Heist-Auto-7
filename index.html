@@ -391,6 +391,13 @@ body.intitle .hud,body.intitle #prompt,body.intitle #touch{opacity:0;pointer-eve
 #deathfx.black .dblack{opacity:1;transition:opacity .5s ease-in}
 #deathfx:not(.black) .dblack{transition:opacity .9s ease-out}
 body.dying .hud,body.dying #prompt,body.dying #mpchip,body.dying #feed{opacity:.2;transition:opacity .6s}
+.stk{grid-template-columns:minmax(0,1fr) auto}.stk .pr{grid-row:1/3;grid-column:2;text-align:right;line-height:1.2}.stk .pr small{font-size:11px}
+.stkrow{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.stkrow .seg .segb{padding:6px 10px;font-size:12.5px}
+#arcade{justify-content:center;background:rgba(5,7,10,.88);z-index:9}
+.arcbox{background:#10151a;border:3px solid #3a2f5a;border-radius:18px;padding:14px;box-shadow:0 0 0 6px #1a1426,0 20px 60px rgba(0,0,0,.6),inset 0 0 30px rgba(120,80,255,.15);display:flex;flex-direction:column;gap:10px;max-width:calc(100vw - 32px)}
+.arctop,.arcbot{display:flex;justify-content:space-between;align-items:center;gap:12px}.arctop b{font:900 28px var(--display);letter-spacing:.08em;color:#b8ffcf;text-shadow:0 0 12px rgba(80,255,140,.5)}.arctop span{font:700 14px var(--mono);color:#f2c14a}
+#arcCv{width:min(360px,calc(100vw - 70px));height:auto;aspect-ratio:1;border-radius:8px;image-rendering:pixelated;background:#000}
+.arcbot span{font:600 12px var(--body);color:var(--muted)}
 .devtab{color:#7fe6a0!important}.devtab.on{color:var(--ink)!important}
 .devsec{border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
 .devsec h4{font:800 18px/1 var(--display);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;color:#7fe6a0}
@@ -4299,10 +4306,11 @@ function updateHUD(speed){
   const pr=[];
   if(!overlay){
     if(hiding){pr.push(['',`${K('E','Y')}Leave ${hiding.name}`,'act'])}
-    else if(interior&&interior.home){const t=nearHomeThing();if(t==='bed')pr.push(['',`${K('E','Y')}Sleep until morning · saves the game`,'act']);else if(t==='desk')pr.push(interior.guest?['info',interior.guest.name+'’s computer']:['',`${K('E','Y')}Home computer · decorate, set spawn${mpOn()?', invite players':''}`,'act']);else if(t==='fridge')pr.push(['',`${K('E','Y')}Raid the fridge`,'act']);if(interior.guest&&ped.y<IH-90&&!t)pr.push(['info','Guest at '+interior.guest.name+'’s house']);if(ped.y>IH-90)pr.push(['info','Walk out the front door to leave'])}
+    else if(interior&&interior.home){const t=nearHomeThing();if(t==='bed')pr.push(['',`${K('E','Y')}Sleep until morning · saves the game`,'act']);else if(t==='desk')pr.push(interior.guest?['info',interior.guest.name+'’s computer']:['',`${K('E','Y')}Home computer · decorate, set spawn${mpOn()?', invite players':''}`,'act']);else if(t==='fridge')pr.push(['',`${K('E','Y')}Raid the fridge`,'act']);else if(t==='arcade')pr.push(['',`${K('E','Y')}Play the arcade machine`,'act']);if(interior.guest&&ped.y<IH-90&&!t)pr.push(['info','Guest at '+interior.guest.name+'’s house']);if(ped.y>IH-90)pr.push(['info','Walk out the front door to leave'])}
     else if(interior){
       const I=interior;
       if(I.bunker)bunkerPrompts(pr);
+      else if(!I.home&&nearArcade()){const s_=nearArcade();pr.push(['',`${K('E','Y')}Play ${s_.i?'Road Rush':'Snake'}`,'act'])}
       else if(I.dealer){const b=nearTurn();
         if(b){const own=save.owned.includes(b.m.id);pr.push(['',`${K('E','Y')}${b.m.name} · ${own?'owned':money(b.m.price)}`,'act'])}
         else if(nearCounter())pr.push(['',`${K('E','Y')}Sales desk · see every car here`,'act']);
@@ -5738,8 +5746,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.43';
+const VERSION='2.44';
 const CHANGELOG=[
+  ['2.44','Bikes, storms and stocks',['Motorbikes: the Viper 1000R superbike, the Mudskipper 250 dirt bike and the Lowrider Chopper, parked around town and sold at Velocity Motors, Rugged Rides and Coastline Classics','Hold Shift (or the nitro button) on a bike to pull a wheelie; hold it for cash, and your best wheelie is saved','Bikes are narrow enough to thread through traffic, but crash hard and you fly over the bars','Weather events: thunderstorms with lightning strikes and thunder, thick fog, and hurricanes with violent winds that shove cars, bikes, boats and aircraft around and send debris flying','Stock market on the phone: eight city companies whose prices react to what happens, like bank robberies sinking First Harbor Bank, wrecked cop cars lifting Vanguard Motors and hurricanes sending umbrella maker Brolly & Co. soaring. Buy low, sell high','Arcade machines: play Snake and Road Rush on the arcade cabinets at home and on two new cabinets in the casinos; beating your high score pays out','Developer tab: buttons to switch the weather']],
   ['2.43','Beached for good',['Once a boat is beached it stays there: reverse no longer pulls it back off the sand. Hop out and walk, or grab another boat']],
   ['2.42','One message at a time',['If your car is wrecked and the blast kills you, only WASTED shows now; the WRECKED banner no longer appears on top of it']],
   ['2.41','Stuck on the sand',['A boat counts as beached as soon as its bow touches land: no throttle, no steering and no more sliding around like it is on ice','The sand grips the hull so it stops quickly and stays put; reverse slowly while there is water behind it to get back off']],
@@ -5910,7 +5919,7 @@ cam.x=P.x;cam.y=P.y;
 spawnBaseVehicles(true);
 renderTitle();setTimeout(()=>$('go').focus(),50);
 try{document.fonts&&document.fonts.ready.then(()=>chunkCache.clear())}catch(e){}
-window.__xtc={get XS(){return XS},get marinas(){return marinas},get hospitals(){return hospitals},get BOATS(){return BOATS},openPhone,startBounty,startHeist,makeEmergencyOffers,get job(){return job},loot,LOOT_TYPES,ISLE2,MZ,takeIdol,bullets,get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
+window.__xtc={get ARC(){return ARC},get MKT(){return MKT},wxSet,openArcade,get bikeSpots(){return bikeSpots},get XS(){return XS},get marinas(){return marinas},get hospitals(){return hospitals},get BOATS(){return BOATS},openPhone,startBounty,startHeist,makeEmergencyOffers,get job(){return job},loot,LOOT_TYPES,ISLE2,MZ,takeIdol,bullets,get MP(){return MP},SECRET,get phoenix(){return phoenix},DEV,OUTFITS,TUNE,moddedModel,get casino(){return casino},homes,sendHome,get dayT(){return dayT},regionAt,workshops,chops,hideouts,get job(){return job},get hiding(){return hiding},acceptJob,makeOffers,WEAPONS,dealers,lotCars,chopValue,action,AIR,airVeh,MIL,baseVeh,switchTo,defeat,get helis(){return police.helis},BASE,drawBody,drawShadow,drawPed,MODELS,civs,get P(){return P},cam,w2s:(x,y)=>{const dx=x-cam.x,dy=y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot);return[(dx*c-dy*s)*cam.z+VW/2,(dx*s+dy*c)*cam.z+VH/2]},events,shops,startEvent,addHeat,setDay:v=>{dayT=v},setRain:v=>{weather.rain=v;weather.target=v},get police(){return police},get race(){return race},get trial(){return trial},get overlay(){return overlay},get interior(){return interior},get onFoot(){return onFoot},ped,copPeds,openGarage:()=>startEvent(events.find(e=>e.type==='garage')),place:(x,y,a)=>{if(onFoot){ped.x=x;ped.y=y}else placeCar(P,x,y,a)},tile:(x,y)=>surfAt(x,y),ramps,save:()=>save,enterShop,toggleVehicle,parked,traffic,give:(id)=>{save.weapons[id]={mag:WEAPONS[id].mag,res:60};selectWeapon(id)}};
 requestAnimationFrame(t=>{last=t;frame(t)});
 
 // =====================================================================
@@ -6102,7 +6111,7 @@ function devHTML(){
     <div class="setrow"><span class="lbl">Unlock</span><div class="seg">${btn('allcars','Own every car')}${btn('allhomes','Own every house')}</div></div></div>
   <div class="devsec"><h4>World</h4>
     <div class="setrow"><span class="lbl">Time</span><div class="seg">${btn('time:.29','Morning')}${btn('time:.5','Noon')}${btn('time:.75','Sunset')}${btn('time:.95','Night')}</div></div>
-    <div class="setrow"><span class="lbl">Weather</span><div class="seg">${btn('rain:0','Clear')}${btn('rain:.5','Drizzle')}${btn('rain:1','Storm')}</div></div>
+    <div class="setrow"><span class="lbl">Weather</span><div class="seg">${btn('wx:clear','Clear')}${btn('wx:rain','Rain')}${btn('wx:storm','Thunderstorm')}${btn('wx:fog','Fog')}${btn('wx:hurricane','Hurricane')}</div></div>
     <div class="setrow"><span class="lbl">Clean up</span><div class="seg">${btn('clearcops','Clear police')}${btn('clearcars','Remove spawned vehicles')}${btn('clearwrecks','Remove wrecks')}</div></div></div>
   <div class="devsec"><h4>Teleport</h4>
     <div class="setrow"><span class="lbl">Go to</span><div class="seg devtp"><select id="devPlace" aria-label="Place to teleport to">${places_}</select>${btn('tp','Teleport')}${btn('tpwp','To waypoint',waypoint?'':'disabled')}</div><span class="sub">Tip: with developer mode on, right-click the world map to teleport there.</span></div></div>
@@ -6132,6 +6141,7 @@ $('mpanel').addEventListener('click',e=>{
     case'allhomes':save.homes=save.homes||{};for(const h of homes)if(!save.homes[h.id])save.homes[h.id]={floor:'oak',wall:'cream',style:'starter',extras:[]};if(!save.spawnHome&&homes[0])save.spawnHome=homes[0].id;persist();addFeed('You own every house');break;
     case'time':dayT=+v;if(DEV.freeze)devFreezeT=dayT;addFeed('Time changed');break;
     case'rain':weather.rain=+v;weather.target=+v;weather.next=240;break;
+    case'wx':wxSet(v);weather.rain=WX[v].rain;break;
     case'clearcops':clearPolice();police.chasers=[];police.helis=[];for(let i=copPeds.length-1;i>=0;i--)if(!copPeds[i].guard)copPeds.splice(i,1);addFeed('Police cleared');break;
     case'clearcars':for(let i=parked.length-1;i>=0;i--)if(parked[i].dev&&parked[i]!==P)parked.splice(i,1);addFeed('Spawned vehicles removed');break;
     case'clearwrecks':for(let i=parked.length-1;i>=0;i--)if(parked[i].dead)parked.splice(i,1);addFeed('Wrecks removed');break;
@@ -7169,7 +7179,7 @@ function phoneService(k){
   if(k==='armor'){if(save.cash<1000||ped.armor>=100)return;ped.armor=100;save.armor=100;save.cash-=1000;persist();addFeed('Armor strapped on',-1000);return}
 }
 $('shopItems').addEventListener('click',e=>{
-  const b=e.target.closest('button[data-ph]');if(!b||!XS.phone.open)return;e.stopImmediatePropagation();const v=b.dataset.ph,[a,arg]=[v.split(':')[0],v.slice(v.indexOf(':')+1)];
+  const b=e.target.closest('button[data-ph]');if(!b||!XS.phone.open)return;if(/^(buy|sell):/.test(b.dataset.ph))return;e.stopImmediatePropagation();const v=b.dataset.ph,[a,arg]=[v.split(':')[0],v.slice(v.indexOf(':')+1)];
   if(a==='app'){XS.phone.app=arg;if(arg==='lb'){XS.lb=null;XS.lbMsg=''}}
   else if(a==='heist'){startHeist(arg)}
   else if(a==='hjoin'){joinHeist(arg)}
@@ -7231,6 +7241,329 @@ function deathFx(){let d=$('deathfx');if(!d){d=document.createElement('div');d.i
 
 // no other banners (like WRECKED) while the WASTED / BUSTED sequence plays
 {const orig=banner;banner=function(main,sub,t,bad){if(XS.death)return;return orig(main,sub,t,bad)}}
+
+// =====================================================================
+// v2.44: motorbikes, weather events, stock market, arcade machines
+// =====================================================================
+
+// =====================================================================
+// MOTORBIKES
+// =====================================================================
+const BIKES=[
+  {id:'sportbike',name:'Viper 1000R',price:9500,top:960,acc:1300,grip:13.5,drift:2.2,turn:3.6,off:0,mass:.55,len:26,wid:10,style:'sportbike',r:8,bike:true,blurb:'A superbike. Stupid fast, threads through traffic, bites back.'},
+  {id:'dirtbike',name:'Mudskipper 250',price:3800,top:760,acc:1150,grip:11.5,drift:2.8,turn:3.8,off:.95,mass:.45,len:24,wid:10,style:'dirtbike',r:8,bike:true,blurb:'Light, jumpy and happy on dirt, sand and grass.'},
+  {id:'chopper',name:'Lowrider Chopper',price:6500,top:820,acc:980,grip:12,drift:2.4,turn:2.9,off:.1,mass:.7,len:30,wid:11,style:'chopper',r:9,bike:true,blurb:'Long forks, loud pipes, laid-back cruising.'}
+];
+for(const b of BIKES){MODELS.push(b);MODEL[b.id]=b;CHOP_PRICE[b.id]=Math.round(b.price*.35)}
+{const add=(name,id)=>{const d=dealers.find(s=>s.name===name);if(d&&!d.stock.includes(id))d.stock.push(id)};add('Rugged Rides','dirtbike');add('Coastline Classics','chopper');add('Velocity Motors','sportbike')}
+const isBike=c=>!!(c&&c.m&&c.m.bike);
+// bikes parked around town, free to borrow (well, steal)
+const bikeSpots=[];
+{
+  const cands=edges.map((e,i)=>({e,i,h:hash2(i,17,4040)})).sort((a,b)=>a.h-b.h);
+  for(const {e,h} of cands){
+    if(bikeSpots.length>=16)break;const L=Math.hypot(e.bx-e.ax,e.by-e.ay);if(L<300)continue;
+    const u=.3+hash2(Math.round(e.ax),Math.round(e.ay),7)*.4,x=e.ax+(e.bx-e.ax)*u,y=e.ay+(e.by-e.ay)*u,nx=-(e.by-e.ay)/L,ny=(e.bx-e.ax)/L,px=x+nx*36,py=y+ny*36;
+    if(inBase(px,py,300)||inAir(px,py,300)||regionAt(px,py)<0||!pedFree(px,py))continue;
+    if(bikeSpots.some(s=>Math.hypot(s.x-px,s.y-py)<1400))continue;
+    bikeSpots.push({x:px,y:py,a:Math.atan2(e.by-e.ay,e.bx-e.ax)+Math.PI/2*.3,m:BIKES[Math.floor(h*97)%3].id,c:null});
+  }
+}
+function spawnParkedBikes(force){
+  const pp=playerPos();
+  for(const s of bikeSpots){if(s.c&&!s.c.dead&&(parked.includes(s.c)||P===s.c))continue;if(!force&&Math.hypot(pp.x-s.x,pp.y-s.y)<1600)continue;
+    const c=makeCar(MODEL[s.m],rpick(['#c9302c','#1f2a33','#f2c14a','#2f6fd6','#e8e4d8','#2fa36b']));placeCar(c,s.x,s.y,s.a);c.stolen=true;c.stolenOnce=true;parked.push(c);s.c=c}
+}
+spawnParkedBikes(true);
+{const orig=tidyParked;tidyParked=function(){orig();spawnParkedBikes(false)}}
+// wheelies: hold Shift (or the nitro button) on a bike
+const wheel={t:0,best:0};
+{const orig=stepCar;stepCar=function(c,ctrl,h,isP){
+  if(!isBike(c)||c.z>0)return orig(c,ctrl,h,isP);
+  const sp=Math.hypot(c.vx,c.vy),want=isP&&ctrl.n&&ctrl.t&&sp>60&&!c.tipped;
+  c.wheelie=clamp((c.wheelie||0)+(want?h*2.2:-h*3),0,1);
+  if(c.wheelie>.05){ctrl=Object.assign({},ctrl,{n:0,s:ctrl.s*.45});if(ctrl.t)c.vx+=Math.cos(c.a)*90*h*c.wheelie,c.vy+=Math.sin(c.a)*90*h*c.wheelie}
+  else if(ctrl.n)ctrl=Object.assign({},ctrl,{n:0});
+  return orig(c,ctrl,h,isP);
+}}
+function wheelieTick(dt){
+  if(onFoot||!isBike(P)){wheel.t=0;return}
+  if(P.wheelie>.6&&mode==='free'){wheel.t+=dt}
+  else if(wheel.t>0){const t=wheel.t;wheel.t=0;if(t>1){const v=Math.round(t*t*12+t*20);earn(v,`Wheelie ${t.toFixed(1)}s`);if(t>(save.bestWheelie||0)){save.bestWheelie=Math.round(t*10)/10;persist();if(t>3)addFeed('New best wheelie · '+t.toFixed(1)+'s')}beep(660+Math.min(600,t*60),.12,'triangle',.05)}}
+}
+// crash hard enough and you fly over the bars
+{const orig=hitReact;hitReact=function(c,vn,isP,x,y){orig(c,vn,isP,x,y);if(isP&&isBike(c)&&!onFoot&&c===P&&vn>(c.wheelie>.3?160:230))throwRider(vn)}}
+function throwRider(vn){
+  const b=P,sp=Math.hypot(b.vx,b.vy)||1,dx=b.vx/sp,dy=b.vy/sp;
+  onFoot=true;ped.x=b.x+dx*18;ped.y=b.y+dy*18;ped.vx=dx*Math.min(620,vn*.9+sp*.35);ped.vy=dy*Math.min(620,vn*.9+sp*.35);ped.flyT=.9;ped.aim=Math.atan2(dy,dx);
+  b.vx*=.25;b.vy*=.25;b.tipped=true;b.wheelie=0;b.thr=0;wheel.t=0;
+  addShake(.45);crashSnd(.9);rumble(1,1,350);addFeed('Thrown off the bike!',null,true);
+  if(!DEV.god)setTimeout(()=>hurtPed(Math.min(55,10+vn*.05),ped.x,ped.y),150);
+}
+{const orig=updatePed;updatePed=function(dt,ctl){
+  if(!(ped.flyT>0)||interior)return orig(dt,ctl);
+  ped.flyT-=dt;const k=Math.exp(-2.6*dt);ped.vx*=k;ped.vy*=k;ped.x+=ped.vx*dt;ped.y+=ped.vy*dt;
+  if(Math.random()<.5)puff(ped.x,ped.y,'#cfcfcf',1,30,5,.5);pedCollide(ped,9,false);
+  if(ped.flyT<=0){ped.flyT=0;ped.vx=ped.vy=0;if(!pedFree(ped.x,ped.y)){if(onWaterAt(ped.x,ped.y))splash(ped.x,ped.y,true);const [nx,ny]=nodeXY(nearestNode(ped.x,ped.y));ped.x=nx+30;ped.y=ny+30}}
+}}
+{const orig=footCtrl;footCtrl=function(){const c=orig();return ped.flyT>0?Object.assign({},c,{mx:0,my:0,fire:false}):c}}
+{const orig=switchTo;switchTo=function(c){if(c)c.tipped=false;return orig(c)}}
+// drawing: two wheels, a frame, and the rider when someone is on it
+function drawBike(g,v){
+  const L=v.len,W=v.wid,hl=L/2,col=v.dead?'#2b2622':v.col,st=v.style,w=v.wheelie||0;
+  g.save();g.translate(v.x,v.y);g.rotate(v.a+(v.tipped?.9:0));if(v.fade!==undefined)g.globalAlpha=v.fade;
+  const fw=st==='chopper'?hl+2:hl-3,rw=-hl+4,tyre=st==='dirtbike'?5.5:st==='chopper'?5:4.5;
+  g.fillStyle='#121416';rr(g,rw-5.5,-tyre/2-.5,11,tyre+1,2);g.fill();
+  g.save();g.translate(fw,0);g.scale(1+w*.35,1+w*.35);g.rotate((v.steer||0)*.5);g.fillStyle='#121416';rr(g,-5.5,-tyre/2,11,tyre,2);g.fill();g.restore();
+  if(st==='chopper'){g.strokeStyle='#c7d0d6';g.lineWidth=2;g.beginPath();g.moveTo(hl*.25,0);g.lineTo(fw,0);g.stroke()}
+  g.fillStyle='#2b2d31';rr(g,-hl+5,-2.5,L-10,5,2);g.fill();
+  g.fillStyle=col;
+  if(st==='sportbike'){rr(g,-hl*.1,-W/2+.5,hl*1.05,W-1,4);g.fill();rr(g,-hl+3,-2.5,hl*.7,5,2);g.fill();g.fillStyle='rgba(120,190,230,.6)';rr(g,hl*.62,-3,4,6,2);g.fill()}
+  else if(st==='dirtbike'){rr(g,-hl*.3,-W/2+1.5,hl*.95,W-3,3);g.fill();g.fillStyle='#e8e4d8';rr(g,hl*.55,-3,5,6,2);g.fill();g.fillStyle=col;rr(g,-hl+2,-2,hl*.6,4,2);g.fill()}
+  else{rr(g,-hl*.05,-W/2+1.5,hl*.55,W-3,5);g.fill();g.fillStyle='#3a2618';rr(g,-hl*.55,-3.5,hl*.5,7,3);g.fill();g.fillStyle='#c7d0d6';g.fillRect(-hl+2,W/2-2,hl*.8,1.8)}
+  g.strokeStyle='#8a9096';g.lineWidth=1.6;g.beginPath();g.moveTo(hl*.45,-W/2-1);g.lineTo(hl*.45,W/2+1);g.stroke();
+  if(v.rider){const lean=-(v.steer||0)*2,back=w*4;
+    g.fillStyle=v.riderCol||'#2d3a4f';rr(g,-hl*.35-back,-5.5,10,11,4);g.fill();
+    g.strokeStyle=v.riderCol||'#2d3a4f';g.lineWidth=3;g.beginPath();g.moveTo(-hl*.2-back,-4);g.lineTo(hl*.42,-W/2);g.moveTo(-hl*.2-back,4);g.lineTo(hl*.42,W/2);g.stroke();
+    g.fillStyle=v.helmet||'#f4f1ea';g.beginPath();g.arc(-hl*.22-back+lean*.2,lean,4.6,0,7);g.fill();g.fillStyle='rgba(20,30,40,.8)';g.beginPath();g.arc(-hl*.22-back+2,lean,3,-1.1,1.1);g.fill()}
+  g.restore();
+}
+const BIKE_STY=new Set(['sportbike','dirtbike','chopper']);
+{const orig=drawBody;drawBody=function(g,v){if(BIKE_STY.has(v.style)){drawBike(g,v);return}return orig(g,v)}}
+{const orig=carView;carView=function(c,extra){const v=orig(c,extra);if(isBike(c)){v.wheelie=c.wheelie||0;v.tipped=!!c.tipped;if(v.player&&c===P&&!onFoot){v.rider=true;v.riderCol=(outfitNow().jacket||save.paint);v.helmet=save.paint}}return v}}
+{const orig=drawShadow;drawShadow=function(g,v){if(BIKE_STY.has(v.style)){g.fillStyle='rgba(0,0,0,.28)';g.save();g.translate(v.x+3+(v.wheelie||0)*4,v.y+4);g.rotate(v.a);g.beginPath();g.ellipse(0,0,v.len/2,v.wid/2+1,0,0,7);g.fill();g.restore();return}return orig(g,v)}}
+{const orig=drawPed;drawPed=function(g,p,o){if(p===ped&&ped.flyT>0&&o)o=Object.assign({},o,{down:true,gun:null});return orig(g,p,o)}}
+
+// =====================================================================
+// WEATHER EVENTS: thunderstorms, fog, hurricanes
+// =====================================================================
+const WX={clear:{rain:0,name:'Clear',w:50,dur:[90,180]},rain:{rain:.85,name:'Rain',w:20,dur:[60,120]},storm:{rain:1,name:'Thunderstorm',w:14,dur:[70,120]},fog:{rain:0,name:'Fog',w:11,dur:[80,140]},hurricane:{rain:1,name:'Hurricane',w:5,dur:[60,100]}};
+XS.wx={kind:'clear',t:0,dur:120,fog:0,dark:0,wind:{x:0,y:0,a:Math.random()*6.28,s:0},nextBolt:6,bolts:[],flash:0};
+function wxSet(kind,quiet){
+  const W=XS.wx,d=WX[kind];if(!d)return;W.kind=kind;W.t=0;W.dur=d.dur[0]+Math.random()*(d.dur[1]-d.dur[0]);weather.target=d.rain;weather.next=1e9;W.nextBolt=3+Math.random()*4;
+  if(quiet)return;
+  if(kind==='storm')addFeed('A thunderstorm is rolling in');else if(kind==='fog')addFeed('Thick fog is settling over the city');
+  else if(kind==='hurricane'){banner('Hurricane warning','Violent winds · hold on to something',2.6,true);beep(700,.4,'square',.05);setTimeout(()=>beep(700,.4,'square',.05),600)}
+  if(typeof mktEvent==='function')mktEvent('wx:'+kind);
+}
+weather.next=1e9;
+function wxTick(dt){
+  const W=XS.wx;W.t+=dt;
+  if(W.t>W.dur){let r=Math.random()*100,k='clear';for(const [id,d] of Object.entries(WX)){r-=d.w;if(r<=0){k=id;break}}if(k===W.kind&&k!=='clear')k='clear';wxSet(k)}
+  weather.target=WX[W.kind].rain;weather.next=1e9;
+  const tgtFog=W.kind==='fog'?1:W.kind==='hurricane'?.35:W.kind==='storm'?.15:0,tgtDark=W.kind==='storm'?.28:W.kind==='hurricane'?.38:W.kind==='rain'?.1:0;
+  W.fog+=clamp(tgtFog-W.fog,-dt*.12,dt*.12);W.dark+=clamp(tgtDark-W.dark,-dt*.15,dt*.15);W.flash=Math.max(0,W.flash-dt*3);
+  // wind
+  const wt=W.kind==='hurricane'?1:W.kind==='storm'?.25:0;W.wind.a+=dt*.05;W.wind.s+=clamp(wt*(.75+.25*Math.sin(time*.9)+.2*Math.sin(time*3.1))-W.wind.s,-dt*.4,dt*.4);
+  const wx=Math.cos(W.wind.a)*W.wind.s,wy=Math.sin(W.wind.a)*W.wind.s;W.wind.x=wx;W.wind.y=wy;
+  if(W.wind.s>.05&&!interior&&mode!=='countdown'){
+    // the wind shoves things sideways (by position, so the vehicle physics can't cancel it out)
+    const push=(c,k)=>{const ox=c.x,oy=c.y;c.x+=wx*k*dt;c.y+=wy*k*dt;if(!isAir(c)||(c.z||0)<5){collideCar(c,c===P&&!onFoot);if(!isBoat(c)&&onWaterAt(c.x,c.y)&&!onWaterAt(ox,oy)){c.x=ox;c.y=oy}if(isBoat(c)&&!onWaterAt(c.x,c.y)){c.x=ox;c.y=oy}}};
+    const kOf=c=>(c.z||0)>20?110:isBoat(c)?70:isBike(c)?60:40/Math.max(.6,c.m.mass||1);
+    if(!P.dead&&!P.beached&&!(P.m.kind==='tank'))push(P,kOf(P));
+    if(onFoot&&!hiding&&!ped.chute){const ox=ped.x,oy=ped.y;ped.x+=wx*38*dt;ped.y+=wy*38*dt;if(!pedFree(ped.x,ped.y)){ped.x=ox;ped.y=oy}}
+    if(onFoot&&ped.chute){ped.x+=wx*120*dt;ped.y+=wy*120*dt}
+    for(const c of parked)if(c!==P&&!c.dead&&!c.beached&&Math.abs(c.x-cam.x)<1400&&Math.abs(c.y-cam.y)<1400&&(isBike(c)||isBoat(c)))push(c,kOf(c)*.5);
+    // flying debris
+    if(Math.random()<W.wind.s*.9){const a=Math.random()*6.28,r=500+Math.random()*300,x=cam.x-wx/W.wind.s*r+Math.cos(a)*300,y=cam.y-wy/W.wind.s*r+Math.sin(a)*300;
+      if(parts.length<440)parts.push({x,y,vx:wx*700+(Math.random()-.5)*80,vy:wy*700+(Math.random()-.5)*80,r:2+Math.random()*3,life:1.6,max:1.6,col:rpick(['#6b8e4e','#a88760','#e8e4d8','#8a6a45','#4f7d3f']),z:10})}
+    if(W.kind==='hurricane'&&Math.random()<dt*.6)addShake(.05);
+  }
+  // lightning
+  if((W.kind==='storm'||W.kind==='hurricane')&&!interior){W.nextBolt-=dt;if(W.nextBolt<=0){W.nextBolt=(W.kind==='hurricane'?3:5)+Math.random()*9;lightning()}}
+  for(let i=W.bolts.length-1;i>=0;i--){W.bolts[i].t+=dt;if(W.bolts[i].t>.45)W.bolts.splice(i,1)}
+}
+function lightning(){
+  const W=XS.wx,pp=playerPos(),a=Math.random()*6.28,d=Math.random()<.12?Math.random()*60:150+Math.random()*1000,x=pp.x+Math.cos(a)*d,y=pp.y+Math.sin(a)*d;
+  const pts=[];let cx=x+(Math.random()-.5)*60,cy=y-420;for(let i=0;i<9;i++){pts.push([cx,cy]);cx+=(x-cx)/(9-i)+(Math.random()-.5)*44;cy+=(y-cy)/(9-i)}pts.push([x,y]);
+  W.bolts.push({x,y,pts,t:0});W.flash=1;sparks(x,y,22);puff(x,y,'#fff6d0',6,160,12,.3);puff(x,y,'#3a3a3a',8,60,10,1.4);
+  if(skidsSoft.length<1400)for(let i=0;i<6;i++){const q=Math.random()*6.28;skidsSoft.push([x,y,x+Math.cos(q)*26,y+Math.sin(q)*26])}
+  const dist=Math.hypot(pp.x-x,pp.y-y);setTimeout(()=>{noiseBurst(60+Math.random()*40,1.4+Math.random(),clamp(.7-dist/2400,.12,.7),'lowpass');if(dist<300)crashSnd(.6)},Math.min(3000,dist*2.2));
+  if(dist<75&&!DEV.god&&mode==='free'){if(onFoot)hurtPed(35,x,y);else damage(P,25);addFeed('Struck by lightning!',null,true);addShake(.4)}
+  else if(dist<400)addShake(.15);
+}
+function drawWxWorld(g,vis){
+  const W=XS.wx;
+  for(const b of W.bolts){if(!vis(b.x,b.y,500))continue;const k=1-b.t/.45;
+    g.save();g.globalCompositeOperation='lighter';g.globalAlpha=k*.6;g.drawImage(SPR.white||SPR.warm,b.x-120,b.y-120,240,240);g.globalAlpha=k;
+    for(const [lw,col] of [[9,'rgba(160,190,255,.5)'],[3,'#ffffff']]){g.strokeStyle=col;g.lineWidth=lw;g.lineJoin='round';g.beginPath();g.moveTo(b.pts[0][0],b.pts[0][1]);for(const q of b.pts)g.lineTo(q[0],q[1]);g.stroke()}
+    g.restore()}
+}
+{const orig=drawHomesWorld;drawHomesWorld=function(g,vis){orig(g,vis);drawWxWorld(g,vis)}}
+// fog, storm darkness and lightning flashes over the whole screen
+{const orig=draw;draw=function(dt){
+  orig(dt);const W=XS.wx;if(interior||overlay==='title')return;
+  const g=ctx;g.save();g.setTransform(DPR,0,0,DPR,0,0);
+  if(W.dark>.01){g.fillStyle=`rgba(8,12,22,${W.dark})`;g.fillRect(0,0,VW,VH)}
+  if(W.fog>.01){const pp=playerPos(),dx=pp.x-cam.x,dy=pp.y-cam.y,c=Math.cos(cam.rot),s=Math.sin(cam.rot),sx=(dx*c-dy*s)*cam.z+VW/2,sy=(dx*s+dy*c)*cam.z+VH/2,r0=Math.max(40,170*cam.z*(1.4-W.fog*.6)),r1=r0+Math.max(160,420*cam.z*(1.2-W.fog*.5));
+    const n=sunInfo().night,fc=n>.3?'70,78,92':'200,206,212',gr=g.createRadialGradient(sx,sy,r0,sx,sy,r1);gr.addColorStop(0,`rgba(${fc},0)`);gr.addColorStop(1,`rgba(${fc},${.96*W.fog})`);g.fillStyle=gr;g.fillRect(0,0,VW,VH);
+    g.fillStyle=`rgba(${fc},${.12*W.fog})`;g.fillRect(0,0,VW,VH)}
+  if(W.flash>.01){g.fillStyle=`rgba(235,240,255,${W.flash*.55})`;g.fillRect(0,0,VW,VH)}
+  g.restore();
+}}
+// the weather label under the minimap
+{const orig=updateHUD;updateHUD=function(dt){orig(dt);const k=XS.wx.kind;if(k==='storm'||k==='fog'||k==='hurricane')$('wx').textContent=WX[k].name}}
+
+// =====================================================================
+// STOCK MARKET
+// =====================================================================
+const MKT=[
+  {s:'FHB',name:'First Harbor Bank',p:120,col:'#f2c14a',about:'Falls when banks get robbed'},
+  {s:'LSTR',name:'Luster Jewels',p:85,col:'#6fd0c8',about:'Falls when jewellers get hit'},
+  {s:'VGD',name:'Vanguard Motors',p:60,col:'#6fb2ff',about:'Builds police cruisers · rises when cop cars get wrecked'},
+  {s:'MART',name:'24/7 Mart Corp',p:38,col:'#3fbf7f',about:'Falls when its stores get robbed'},
+  {s:'SKY',name:'SkyLine Air',p:150,col:'#9ad0ff',about:'Hates storms and wrecked aircraft'},
+  {s:'BRLY',name:'Brolly & Co.',p:22,col:'#b388ff',about:'Umbrellas and storm shutters · loves bad weather'},
+  {s:'SAFE',name:'SecureTech',p:70,col:'#ff8a5c',about:'Security systems · rises with every crime wave'},
+  {s:'AUTO',name:'Eastgate Autoworks',p:48,col:'#e8e4d8',about:'Repairs and parts · rises as cars get wrecked'}
+];
+const MKT_BASE=Object.fromEntries(MKT.map(c=>[c.s,c.p]));
+if(!save.mkt||!save.mkt.p)save.mkt={p:{},h:{},hist:{},cost:{}};
+for(const c of MKT){const m=save.mkt;if(!(m.p[c.s]>0))m.p[c.s]=c.p;m.h[c.s]=m.h[c.s]||0;m.cost[c.s]=m.cost[c.s]||0;if(!Array.isArray(m.hist[c.s])||!m.hist[c.s].length)m.hist[c.s]=[m.p[c.s]]}
+const mktPending={},mktNews=[];let mktT=0;
+function mktShock(sym,pct,why){mktPending[sym]=(mktPending[sym]||0)+pct;if(why){mktNews.unshift({t:time,txt:`${why} · ${sym} ${pct>0?'▲':'▼'}${Math.abs(Math.round(pct*100))}%`});if(mktNews.length>5)mktNews.pop()}}
+function mktEvent(ev,arg){
+  if(ev==='rob'){const t=arg;if(t==='bank')mktShock('FHB',-.09,'Bank robbed');else if(t==='jewel')mktShock('LSTR',-.08,'Jewel store robbed');else if(t==='mart')mktShock('MART',-.06,'24/7 held up');else if(t==='diner'||t==='gun'||t==='clothes'||t==='pawn')mktShock('SAFE',.015);mktShock('SAFE',.025,t==='bank'||t==='jewel'?null:'Crime wave')}
+  else if(ev==='heist'){if(arg==='bank')mktShock('FHB',-.16,'Vault cleaned out');else if(arg==='jewel')mktShock('LSTR',-.14,'Diamond heist');else mktShock('SKY',-.05,'Military secrets stolen');mktShock('SAFE',.06)}
+  else if(ev==='copwreck'){mktShock('VGD',.018,Math.random()<.35?'Police order new cruisers':null)}
+  else if(ev==='wreck'){mktShock('AUTO',.006)}
+  else if(ev==='chop'){mktShock('AUTO',.012)}
+  else if(ev==='airwreck'){mktShock('SKY',-.045,'Aircraft lost')}
+  else if(ev==='bounty'){mktShock('SAFE',.02)}
+  else if(ev==='wx:storm'){mktShock('BRLY',.08,'Thunderstorm');mktShock('SKY',-.04)}
+  else if(ev==='wx:hurricane'){mktShock('BRLY',.2,'Hurricane');mktShock('SKY',-.12,'Flights grounded');mktShock('AUTO',.05)}
+  else if(ev==='wx:rain'){mktShock('BRLY',.03)}
+  else if(ev==='wx:clear'){mktShock('BRLY',-.04);mktShock('SKY',.02)}
+}
+function mktTick(dt){
+  mktT+=dt;if(mktT<4)return;mktT=0;const m=save.mkt;
+  for(const c of MKT){let p=m.p[c.s];const pend=mktPending[c.s]||0,step=pend*.3;mktPending[c.s]=pend-step;
+    const noise=(Math.random()+Math.random()+Math.random()-1.5)*.013,rev=Math.log(MKT_BASE[c.s]/p)*.012;
+    p=Math.max(1,p*Math.exp(noise+rev+Math.log(1+step)));m.p[c.s]=Math.round(p*100)/100;const h=m.hist[c.s];h.push(m.p[c.s]);if(h.length>60)h.shift()}
+  persist();if(XS.phone.open&&XS.phone.app==='stocks'){const a=document.activeElement,k=a&&a.dataset&&a.dataset.ph;renderPhone();const nb=k&&$('shopItems').querySelector(`button[data-ph="${k}"]:not(:disabled)`);if(nb)nb.focus()}
+}
+{const orig=completeRobbery;completeRobbery=function(){const t=interior&&interior.sh.type;orig();mktEvent('rob',t)}}
+{const orig=explodeCar;explodeCar=function(c,big){const was=!c.dead;orig(c,big);if(!was)return;if(c.m===COP_MODEL||c.m.id==='swat'||c.m.style==='police')mktEvent('copwreck');else if(isAir(c)||c.m.kind==='plane')mktEvent('airwreck');else mktEvent('wreck')}}
+{const orig=trafficExplode;trafficExplode=function(t){const cop=!t.dead&&t.cop;orig(t);if(cop)mktEvent('copwreck')}}
+{const orig=sellVehicle;sellVehicle=function(g){const before=save.chopped||0;orig(g);if((save.chopped||0)>before)mktEvent('chop')}}
+{const orig=bountyDone;bountyDone=function(){orig();mktEvent('bounty')}}
+{const orig=heistPay;heistPay=function(amount,id,name){const k=XS.heist&&XS.heist.key;const was=save.heistPaid&&save.heistPaid[id];orig(amount,id,name);if(!was&&k)mktEvent('heist',k)}}
+function spark(h,col){const w=120,hh=26,mn=Math.min(...h),mx=Math.max(...h),r=mx-mn||1;return `<svg width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}" style="display:block"><polyline fill="none" stroke="${col}" stroke-width="1.8" points="${h.map((v,i)=>`${(i/(Math.max(1,h.length-1))*w).toFixed(1)},${(hh-2-(v-mn)/r*(hh-4)).toFixed(1)}`).join(' ')}"/></svg>`}
+function stocksHTML(){
+  const m=save.mkt;let worth=0,cost=0;for(const c of MKT){worth+=m.h[c.s]*m.p[c.s];cost+=m.cost[c.s]}
+  let h=`<div class="item"><span class="nm">Portfolio ${money(Math.round(worth))}</span><span class="ds">${worth?`${worth>=cost?'Up':'Down'} ${money(Math.abs(Math.round(worth-cost)))} on what you paid`:'Buy low, sell high. Your crimes move the market.'}</span><span class="pr"></span></div>`;
+  if(mktNews.length)h+=`<p class="hint" style="margin:2px 0 4px">${mktNews.slice(0,3).map(n=>n.txt).join(' · ')}</p>`;
+  for(const c of MKT){const p=m.p[c.s],hist=m.hist[c.s],p0=hist[0],ch=(p-p0)/p0*100,own=m.h[c.s];
+    h+=`<div class="item stk"><span class="nm"><span style="color:${c.col}">${c.s}</span> ${c.name}</span><span class="ds">${c.about}${own?` · you own ${own} (${money(Math.round(own*p))})`:''}</span><span class="pr" style="color:${ch>=0?'var(--cash)':'var(--siren)'}">$${p.toFixed(2)}<br><small>${ch>=0?'▲':'▼'}${Math.abs(ch).toFixed(1)}%</small></span>
+      <div class="stkrow">${spark(hist,ch>=0?'#8fdc6a':'#ff4655')}<div class="seg"><button class="segb" data-ph="buy:${c.s}:10" ${save.cash<p*10?'disabled':''}>Buy 10</button><button class="segb" data-ph="buy:${c.s}:100" ${save.cash<p*100?'disabled':''}>Buy 100</button><button class="segb" data-ph="sell:${c.s}" ${own?'':'disabled'}>Sell all</button></div></div></div>`}
+  return h+`<p class="hint">Prices update every few seconds. Robberies, heists, wrecked cop cars, lost aircraft, bounties and the weather all move them.</p>`;
+}
+function stockTrade(a,sym,n){
+  const m=save.mkt,p=m.p[sym];
+  if(a==='buy'){n=+n;const cost=Math.round(p*n*100)/100;if(save.cash<cost)return;save.cash=Math.round((save.cash-cost)*100)/100;cashShown=save.cash;m.h[sym]+=n;m.cost[sym]+=cost;addFeed(`Bought ${n} ${sym}`,-Math.round(cost));beep(660,.06)}
+  else{const own=m.h[sym];if(!own)return;const v=Math.round(own*p);m.h[sym]=0;m.cost[sym]=0;earn(v,`Sold ${own} ${sym}`);beep(880,.06)}
+  save.cash=Math.round(save.cash);persist();
+}
+{const orig=renderPhone;renderPhone=function(){
+  orig();
+  if(XS.phone.app==='home'){$('shopItems').insertAdjacentHTML('beforeend',phItem('Stocks','Trade shares in city companies · your crimes move the market','','app:stocks','Open'));return}
+  if(XS.phone.app==='stocks'){$('shopName').textContent='Stocks';$('shopLine').textContent='Liberty City Exchange… well, the city’s one.';$('shopItems').innerHTML=`<div class="seg" style="margin-bottom:4px"><button class="segb" data-ph="app:home">← Back</button></div>`+stocksHTML()}
+}}
+$('shopItems').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-ph]');if(!b||!XS.phone.open)return;const v=b.dataset.ph;if(!v.startsWith('buy:')&&!v.startsWith('sell:'))return;e.stopImmediatePropagation();
+  const [a,sym,n]=v.split(':');stockTrade(a,sym,n);renderPhone();const nb=$('shopItems').querySelector(`button[data-ph="${v}"]:not(:disabled)`)||$('shopItems').querySelector(`button[data-ph^="sell:${sym}"]:not(:disabled)`)||$('shopItems').querySelector('button:not(:disabled)');if(nb)nb.focus();
+},true);
+
+// =====================================================================
+// ARCADE MACHINES: Snake and Road Rush, at home and in the casino
+// =====================================================================
+const ARC={open:false,game:null,cv:null,g:null,st:null,dir:[1,0],keys:{},raf:0,last:0};
+function arcadeEl(){
+  let d=$('arcade');if(d)return d;
+  d=document.createElement('div');d.id='arcade';d.className='overlay';d.hidden=true;
+  d.innerHTML=`<div class="arcbox"><div class="arctop"><b id="arcName">SNAKE</b><span id="arcScore">0</span></div><canvas id="arcCv" width="360" height="360"></canvas><div class="arcbot"><span id="arcHint"></span><button class="btn ghost sm" id="arcExit">Leave</button></div></div>`;
+  $('game').appendChild(d);$('arcExit').addEventListener('click',closeArcade);return d;
+}
+function openArcade(which){
+  if(overlay)return;const el=arcadeEl();overlay='arcade';el.hidden=false;ARC.open=true;ARC.game=which===1?'road':'snake';ARC.cv=$('arcCv');ARC.g=ARC.cv.getContext('2d');
+  $('arcName').textContent=ARC.game==='snake'?'SNAKE':'ROAD RUSH';arcReset();ARC.last=performance.now();cancelAnimationFrame(ARC.raf);ARC.raf=requestAnimationFrame(arcLoop);
+  beep(523,.08,'square',.05);setTimeout(()=>beep(784,.12,'square',.05),90);
+}
+function closeArcade(){ARC.open=false;cancelAnimationFrame(ARC.raf);const el=$('arcade');if(el)el.hidden=true;if(overlay==='arcade')overlay=null}
+{const orig=escape;escape=function(){if(overlay==='arcade'){closeArcade();return}return orig()}}
+function arcReset(){
+  save.arcade=save.arcade||{snake:0,road:0};ARC.dir=[1,0];ARC.next=[1,0];
+  if(ARC.game==='snake')ARC.st={snake:[[8,9],[7,9],[6,9]],food:[13,9],t:0,step:.13,score:0,over:false,started:false};
+  else ARC.st={x:1,tx:1,cars:[],t:0,spd:220,spawn:0,score:0,over:false,started:false,lines:0};
+  arcHint();
+}
+function arcHint(){const S=ARC.st,best=save.arcade[ARC.game];$('arcScore').textContent=`${Math.floor(S.score)}  ·  BEST ${best}`;
+  $('arcHint').textContent=S.over?(pad.using?'A: play again · B: leave':'Enter: play again · Esc: leave'):!S.started?(ARC.game==='snake'?'Arrows / WASD to steer · eat the dots':'Left / right to change lanes · dodge the traffic'):''}
+function arcInput(dx,dy){
+  const S=ARC.st;if(S.over)return;S.started=true;
+  if(ARC.game==='snake'){if(dx&&ARC.dir[0]!==-dx)ARC.next=[dx,0];else if(dy&&ARC.dir[1]!==-dy)ARC.next=[0,dy]}
+  else if(dx)S.tx=clamp(S.tx+dx,0,2);
+}
+function arcOver(){const S=ARC.st;S.over=true;const k=ARC.game,sc=Math.floor(S.score);noiseBurst(200,.4,.3);beep(160,.4,'square',.05);
+  if(sc>(save.arcade[k]||0)){const prize=k==='snake'?sc*20:Math.round(sc*2);save.arcade[k]=sc;persist();if(prize>0)earn(prize,'New '+(k==='snake'?'Snake':'Road Rush')+' high score');beep(880,.2,'triangle',.05)}
+  arcHint()}
+function arcLoop(now){
+  if(!ARC.open)return;const dt=Math.min(.05,(now-ARC.last)/1000);ARC.last=now;
+  if(pad.using&&ARC.st&&!ARC.st.over){const lx=pad.lx||0,ly=pad.ly||0;if(Math.abs(lx)>.6||Math.abs(ly)>.6){if(!ARC.stickHeld){ARC.stickHeld=true;Math.abs(lx)>Math.abs(ly)?arcInput(Math.sign(lx),0):arcInput(0,Math.sign(ly))}}else ARC.stickHeld=false}
+  const S=ARC.st,g=ARC.g,W=360;
+  if(ARC.game==='snake'){
+    const N_=18,C=W/N_;
+    if(S.started&&!S.over){S.t+=dt;while(S.t>=S.step){S.t-=S.step;ARC.dir=ARC.next;const h=S.snake[0],nh=[h[0]+ARC.dir[0],h[1]+ARC.dir[1]];
+      if(nh[0]<0||nh[1]<0||nh[0]>=N_||nh[1]>=N_||S.snake.some(q=>q[0]===nh[0]&&q[1]===nh[1])){arcOver();break}
+      S.snake.unshift(nh);if(nh[0]===S.food[0]&&nh[1]===S.food[1]){S.score++;S.step=Math.max(.06,S.step*.96);beep(880,.05,'square',.04);let f;do{f=[Math.floor(Math.random()*N_),Math.floor(Math.random()*N_)]}while(S.snake.some(q=>q[0]===f[0]&&q[1]===f[1]));S.food=f;arcHint()}else S.snake.pop()}}
+    g.fillStyle='#07130a';g.fillRect(0,0,W,W);g.strokeStyle='rgba(80,255,120,.06)';for(let i=0;i<=N_;i++){g.beginPath();g.moveTo(i*C,0);g.lineTo(i*C,W);g.moveTo(0,i*C);g.lineTo(W,i*C);g.stroke()}
+    g.fillStyle='#ff4655';g.beginPath();g.arc((S.food[0]+.5)*C,(S.food[1]+.5)*C,C*.35+Math.sin(now/150)*1.5,0,7);g.fill();
+    S.snake.forEach((q,i)=>{g.fillStyle=i?`hsl(${130-i*2},80%,${55-Math.min(25,i)}%)`:'#b8ffcf';rr(g,q[0]*C+1.5,q[1]*C+1.5,C-3,C-3,4);g.fill()});
+  }else{
+    const lanes=[W*.2,W*.5,W*.8];
+    if(S.started&&!S.over){S.t+=dt;S.spd=220+S.t*14;S.score+=dt*S.spd/40;S.x+=clamp(S.tx-S.x,-dt*7,dt*7);S.lines=(S.lines+dt*S.spd)%60;
+      S.spawn-=dt;if(S.spawn<=0){S.spawn=Math.max(.32,1.1-S.t*.02)*(.6+Math.random()*.6);const ln=Math.floor(Math.random()*3);S.cars.push({l:ln,y:-50,c:rpick(['#2f6fd6','#f2c14a','#e8e4d8','#2fa36b','#b388ff']),v:.4+Math.random()*.4})}
+      for(const c of S.cars)c.y+=dt*S.spd*(1-c.v*.5);S.cars=S.cars.filter(c=>c.y<W+60);
+      const px=lanes[0]+(lanes[2]-lanes[0])*(S.x/2),py=W-60;for(const c of S.cars)if(Math.abs(lanes[c.l]-px)<34&&Math.abs(c.y-py)<52){arcOver();break}
+      if(Math.floor(S.score)%25===0&&S.lastBeep!==Math.floor(S.score)){S.lastBeep=Math.floor(S.score);arcHint()}}
+    g.fillStyle='#2a2d33';g.fillRect(0,0,W,W);g.fillStyle='#3d7a3a';g.fillRect(0,0,22,W);g.fillRect(W-22,0,22,W);
+    g.fillStyle='#f2c14a';for(let y=-60+S.lines;y<W;y+=60){g.fillRect(W*.35-2,y,4,30);g.fillRect(W*.65-2,y,4,30)}
+    const car=(x,y,col,me)=>{g.fillStyle='rgba(0,0,0,.35)';rr(g,x-17,y-27,38,58,7);g.fill();g.fillStyle=col;rr(g,x-19,y-30,38,58,8);g.fill();g.fillStyle='rgba(20,30,40,.75)';rr(g,x-14,y+(me?-18:8),28,12,3);g.fill();g.fillStyle=me?'#ffe38a':'#ff4655';g.fillRect(x-15,me?y-30:y+24,8,4);g.fillRect(x+7,me?y-30:y+24,8,4)};
+    for(const c of S.cars)car(lanes[c.l],c.y,c.c,false);
+    car(lanes[0]+(lanes[2]-lanes[0])*(S.x/2),W-60,save.paint,true);
+    $('arcScore').textContent=`${Math.floor(S.score)}  ·  BEST ${save.arcade.road||0}`;
+  }
+  if(S.over){g.fillStyle='rgba(0,0,0,.6)';g.fillRect(0,0,W,W);g.fillStyle='#ff4655';g.font='900 44px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText('GAME OVER',W/2,W/2-18);g.fillStyle='#fff';g.font='700 16px '+FM;g.fillText('SCORE '+Math.floor(S.score),W/2,W/2+22)}
+  else if(!S.started){g.fillStyle='rgba(0,0,0,.45)';g.fillRect(0,W/2-30,W,60);g.fillStyle='#fff';g.font='800 20px '+FD;g.textAlign='center';g.textBaseline='middle';g.fillText('PRESS A DIRECTION TO START',W/2,W/2)}
+  ARC.raf=requestAnimationFrame(arcLoop);
+}
+addEventListener('keydown',e=>{
+  if(overlay!=='arcade')return;const c=e.code,S=ARC.st;e.stopPropagation();
+  if(c==='Escape'||c==='KeyQ'){e.preventDefault();closeArcade();return}
+  if((c==='Enter'||c==='Space')&&S&&S.over){e.preventDefault();arcReset();return}
+  const d={ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0],ArrowUp:[0,-1],KeyW:[0,-1],ArrowDown:[0,1],KeyS:[0,1]}[c];if(d){e.preventDefault();if(!e.repeat)arcInput(d[0],d[1])}
+},true);
+{const orig=onPadButton;onPadButton=function(b){if(overlay==='arcade'){if(b===1||b===9)closeArcade();else if(b===0&&ARC.st&&ARC.st.over)arcReset();else if(b===12)arcInput(0,-1);else if(b===13)arcInput(0,1);else if(b===14)arcInput(-1,0);else if(b===15)arcInput(1,0);return}return orig(b)}}
+// cabinets: the home extra, plus two new ones in the casino
+function arcadeSolids(){if(!interior)return[];if(interior.home)return homeSolids(interior).filter(s=>s.k==='arcade');return interior.solids.filter(s=>s.k==='arcade')}
+function nearArcade(){let best=null,bd=34;for(const s of arcadeSolids()){const d=distRect(ped.x,ped.y,s);if(d<bd){bd=d;best=s}}return best}
+{const orig=buildInterior;buildInterior=function(sh){const I=orig(sh);if(sh.type==='casino'){I.solids.push({x:IW-130,y:326,w:36,h:40,k:'arcade',i:0},{x:IW-86,y:326,w:36,h:40,k:'arcade',i:1})}return I}}
+{const orig=drawSolid;drawSolid=function(s,I,t){
+  if(s.k!=='arcade'||(I&&I.home))return orig(s,I,t);const g=ctx,{x,y,w,h}=s;
+  g.fillStyle='rgba(0,0,0,.28)';g.fillRect(x+4,y+5,w,h);g.fillStyle=s.i?'#6a1f8c':'#1f4a8c';rr(g,x,y,w,h,4);g.fill();
+  g.fillStyle='#07130a';g.fillRect(x+5,y+5,w-10,h*.45);g.fillStyle=s.i?`hsl(${(time*120)%360},70%,60%)`:'#3fe07a';
+  if(s.i){g.fillRect(x+w/2-3,y+8+((time*30)%12),6,8)}else for(let k=0;k<4;k++)g.fillRect(x+8+k*5,y+12,4,4);
+  g.fillStyle='#10151a';g.fillRect(x+4,y+h*.62,w-8,6);g.fillStyle='#ff4655';g.beginPath();g.arc(x+w*.35,y+h*.65+1,2.5,0,7);g.fill();g.fillStyle='#f2c14a';g.beginPath();g.arc(x+w*.65,y+h*.65+1,2.5,0,7);g.fill();
+  g.save();g.fillStyle='#fff';g.font='800 7px '+FM;g.textAlign='center';g.fillText(s.i?'ROAD RUSH':'SNAKE',x+w/2,y+h-4);g.restore();
+}}
+{const orig=nearHomeThing;nearHomeThing=function(){const t=orig();if(t)return t;return nearArcade()?'arcade':null}}
+{const orig=homeAction;homeAction=function(){if(nearHomeThing()==='arcade'){const s=nearArcade();if(s)openArcade(s.i);return}return orig()}}
+{const orig=action;action=function(){if(!overlay&&interior&&!interior.home){const s=nearArcade();if(s){openArcade(s.i);return}}return orig()}}
+
+// =====================================================================
+// per-frame hooks
+// =====================================================================
+{const orig=updateFires;updateFires=function(dt){orig(dt);try{wheelieTick(dt);wxTick(dt);mktTick(dt)}catch(e){console.error(e)}}}
 
 })();
 </script>
