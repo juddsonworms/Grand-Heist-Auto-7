@@ -5726,8 +5726,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.36';
+const VERSION='2.37';
 const CHANGELOG=[
+  ['2.37','Parked after bailing',['After you bail out, the empty jet, plane or helicopter loses its speed and comes down, so it no longer takes off again at full speed when you get back in']],
   ['2.36','Under the bridge',['Boats going under a bridge now disappear beneath it: only a faint shape shows through, with no shadow, glow or lights on top of the road']],
   ['2.35','Boat fixes',['Boats no longer have car headlights and brake lights; at night they show proper navigation lights: red on the left, green on the right and white at the stern','Boats can no longer drive up onto land: the shore is solid and you bump off it (hard hits cause a little damage)','Boats now pass under bridges instead of looking like they drive across them']],
   ['2.34','Phone, heists and boats',['New phone: press I (D-pad up on a controller, or the Phone button on touch) for Heists, Bounties, Dispatch, Services and the Leaderboard','Co-op heists: plan the Diamond District Job, the Harbor Bank Vault or the Area 51 Prototype, invite up to three players from the phone, and split a bigger payout (25% more for every extra crew member)','Heists have steps: meet up, hold the ring while the alarm rings (more crew inside = faster), lose the police together, then stash the loot','Bounty hunting: take a contract, search the red circle for the target, deal with their armed bodyguards and take them down before they get away','Emergency jobs at job centres and from Dispatch: ambulance runs to the new hospitals, fire truck calls where you hose down a burning building, and tow truck jobs','Boats: speedboats and jet skis at seven marinas around the coast, with a wake and spray; hop off near the shore, or have one delivered from the phone','Parachutes: press F / B in a helicopter or jet high in the air to bail out and glide down; F / B again near the ground to cut away','Services on the phone: a mechanic brings your car, a taxi takes you to your waypoint, plus boat delivery, ammo and armor drops','Server leaderboard: richest player, heists, bounties, idols, valuables, emergency calls and fastest maze time, saved on your own server']],
@@ -6761,6 +6762,8 @@ function bailOut(){
   }
 }}
 {const orig=fireWeapon;fireWeapon=function(){if(ped.chute)return;return orig()}}
+// an empty aircraft loses its speed and altitude target, so it's parked when you climb back in
+{const orig=stepAir;stepAir=function(c,ctrl,h,isP){orig(c,ctrl,h,isP);if(!isP&&!c.crashing){c.vf=Math.hypot(c.vx,c.vy);c.alt=Math.min(c.alt||0,c.z||0);c.burn=false;c.thr=0}}}
 {const orig=toggleVehicle;toggleVehicle=function(){if(onFoot&&ped.chute){if(ped.chute.z<80){ped.chute.z=0;addFeed('Cut away')}return}return orig()}}
 {const orig=drawPlayerPed;drawPlayerPed=function(g){
   const C=ped.chute;if(!C||interior)return orig(g);
