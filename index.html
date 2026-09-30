@@ -5738,8 +5738,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.41';
+const VERSION='2.42';
 const CHANGELOG=[
+  ['2.42','One message at a time',['If your car is wrecked and the blast kills you, only WASTED shows now; the WRECKED banner no longer appears on top of it']],
   ['2.41','Stuck on the sand',['A boat counts as beached as soon as its bow touches land: no throttle, no steering and no more sliding around like it is on ice','The sand grips the hull so it stops quickly and stays put; reverse slowly while there is water behind it to get back off']],
   ['2.40','Pricier ammo drops',['Phone ammo drops now charge for the rounds you actually get, at double the gun-shop price, plus a $750 delivery fee','Buying at a gun shop is always the cheaper option']],
   ['2.39','Wasted, smoothly',['Getting wasted or busted no longer snaps you straight to the respawn point','The game drops into slow motion and fades to grey while the camera pushes in and WASTED or BUSTED fades up; on foot you fall down, or put your hands up for the police','Then it fades to black, moves you to the garage or your home, and fades back in with the summary']],
@@ -7209,7 +7210,7 @@ function deathFx(){let d=$('deathfx');if(!d){d=document.createElement('div');d.i
 {const orig=defeat;defeat=function(kind){
   if(XS.death)return;
   if(XS.phone.open)closeShop();
-  const D=XS.death={kind,t:0,z0:cam.z,onFoot};const el=deathFx();
+  const D=XS.death={kind,t:0,z0:cam.z,onFoot};const el=deathFx();$('banner').hidden=true;
   el.className='on '+kind;el.querySelector('.dtxt').textContent=kind==='busted'?'Busted':'Wasted';
   $('world').classList.add('dying');document.body.classList.add('dying');
   if(kind==='busted'){[523,392,262].forEach((f,i)=>setTimeout(()=>beep(f,.35,'square',.05),i*260))}else{noiseBurst(90,1.4,.4,'lowpass');[330,262,196,131].forEach((f,i)=>setTimeout(()=>beep(f,.5,'sine',.07),i*300))}
@@ -7228,6 +7229,9 @@ function deathFx(){let d=$('deathfx');if(!d){d=document.createElement('div');d.i
 {const orig=hurtPed;hurtPed=function(d,x,y){if(XS.death)return;return orig(d,x,y)}}
 {const orig=drawPed;drawPed=function(g,p,o){if(XS.death&&p===ped&&o&&XS.death.onFoot)o=Object.assign({},o,XS.death.kind==='busted'?{hands:true,gun:null}:{down:true,gun:null});return orig(g,p,o)}}
 {const orig=openPhone;openPhone=function(){if(XS.death)return;return orig()}}
+
+// no other banners (like WRECKED) while the WASTED / BUSTED sequence plays
+{const orig=banner;banner=function(main,sub,t,bad){if(XS.death)return;return orig(main,sub,t,bad)}}
 
 })();
 </script>
