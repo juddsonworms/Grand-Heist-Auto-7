@@ -375,6 +375,7 @@ body.intitle .hud,body.intitle #prompt,body.intitle #touch{opacity:0;pointer-eve
 #sleepfade.on span{animation:sleepZ 2.6s ease-in-out both}
 @keyframes sleepF{0%{opacity:0}30%,65%{opacity:1}100%{opacity:0}}
 @keyframes sleepZ{0%{transform:translateY(10px);opacity:0}35%{opacity:.85}70%{transform:translateY(-10px);opacity:.85}100%{opacity:0}}
+.nickrow{flex-wrap:nowrap}#nickIn{flex:1 1 auto;min-width:0;max-width:260px;font:600 15px var(--body);background:var(--ink2);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:8px 12px;outline:none;-webkit-user-select:text;user-select:text}#nickIn:focus{border-color:var(--cone)}
 .devtab{color:#7fe6a0!important}.devtab.on{color:var(--ink)!important}
 .devsec{border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
 .devsec h4{font:800 18px/1 var(--display);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;color:#7fe6a0}
@@ -558,6 +559,7 @@ body.intitle .hud,body.intitle #prompt,body.intitle #touch{opacity:0;pointer-eve
 <script>
 (()=>{
 "use strict";
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // =====================================================================
 // constants & utils
 // =====================================================================
@@ -2906,7 +2908,7 @@ function action(){
     if(interior.garage){const b=nearBay(),e=garageEvent(interior.garage);if(nearBayPanel()){cycleBays(1);return}if(b)openGarage(e,b.m.id);else if(nearCounter()||nearBooth())openGarage(e);return}
     if(interior.dealer){const b=nearTurn();if(b)openDealer(interior.dealer,b.m.id);else if(nearCounter())openDealer(interior.dealer);return}
     if(nearCounter())openShopMenu();return}
-  const hm=nearHome();if(hm){if(ownsHome(hm))enterShop(hm);else openHomeBuy(hm);return}
+  const hm=nearHome();if(hm){if(ownsHome(hm))enterShop(hm);else if(mpInviteFor(hm))mpVisitHome(hm);else openHomeBuy(hm);return}
   const sh=nearShop();if(sh){enterShop(sh);return}
   const e=nearEvent();if(e)startEvent(e);
 }
@@ -3099,7 +3101,7 @@ const homes=[];
   PLACECOL.home='#f59ac8';
 }
 const ownsHome=h=>!!(save.homes&&save.homes[h.id]);
-const homeCfg=h=>save.homes&&save.homes[h.id];
+const homeCfg=h=>(interior&&interior.home===h&&interior.guest)?interior.guest.cfg:save.homes&&save.homes[h.id];
 function spawnHome(){const id=save.spawnHome;if(!id)return null;const h=homes.find(x=>x.id===id);return h&&ownsHome(h)?h:null}
 function nearHome(){if(!onFoot||interior||overlay)return null;for(const h of homes)if(Math.hypot(ped.x-h.sx,ped.y-h.sy)<46)return h;return null}
 function parkAtHome(h,car){placeCar(car,h.drive.x,h.drive.y,h.drive.a);car.vx=car.vy=0}
@@ -3168,6 +3170,7 @@ function updateHomeInterior(dt,ctl){
 function homeAction(){
   const t=nearHomeThing();
   if(t==='bed')sleepAtHome();
+  else if(t==='desk'&&interior.guest){addFeed('That’s '+interior.guest.name+'’s computer',null,true)}
   else if(t==='desk'){homePanel={h:interior.home,mode:'deco'};overlay='shop';$('shop').hidden=false;renderHomePanel();setTimeout(()=>{const b=$('shopItems').querySelector('button:not(:disabled)')||$('shopClose');b.focus()},30)}
   else if(t==='fridge'){if(ped.hp>=100){addFeed('You’re not hungry');return}ped.hp=Math.min(100,ped.hp+35);addFeed('Grabbed a snack · +35 health');beep(660,.08);setTimeout(()=>beep(820,.1),80)}
 }
@@ -3212,6 +3215,7 @@ function renderHomePanel(){
   $('shopLine').textContent='Decorate every room. Paid upgrades stay unlocked, so you can switch back and forth for free.';
   $('shopItems').innerHTML=
     `<div class="item"><span class="nm">Spawn point</span><span class="ds">${spawnHere?'You start here, and come back here after getting busted, wasted or wrecked':'Start the game and come back here, parked in the driveway'}</span><span class="pr"></span><button class="btn sm" data-hm="spawn" ${spawnHere?'disabled':''}>${spawnHere?'Set':'Spawn here'}</button></div>`+
+    mpInviteHTML()+
     `<p class="eyebrow hsec">Floor</p>`+HOME_OPT.floor.map(o=>optRow('floor',o,cfg)).join('')+
     `<p class="eyebrow hsec">Walls</p>`+HOME_OPT.wall.map(o=>optRow('wall',o,cfg)).join('')+
     `<p class="eyebrow hsec">Furniture</p>`+HOME_OPT.style.map(o=>optRow('style',o,cfg)).join('')+
@@ -3220,6 +3224,7 @@ function renderHomePanel(){
 $('shopItems').addEventListener('click',e=>{
   const b=e.target.closest('button[data-hm]');if(!b||!homePanel)return;const v=b.dataset.hm,h=homePanel.h;
   if(v==='buy'){buyHome(h);return}
+  if(v.startsWith('inv:')){mpInvite(v.slice(4),h);renderHomePanel();const nb=$('shopItems').querySelector('button[data-hm^="inv:"]:not(:disabled)');(nb||$('shopClose')).focus();return}
   if(v==='spawn'){save.spawnHome=h.id;persist();addFeed('Spawn set · '+h.name);renderHomePanel();return}
   const [key,id]=v.split(':'),cfg=homeCfg(h);cfg.bought=cfg.bought||[];
   const o=HOME_OPT[key].find(x=>x[0]===id),tag=key+':'+id,owned=cfg.bought.includes(tag)||o[2]===0;
@@ -3870,7 +3875,7 @@ function updateHUD(speed){
   const pr=[];
   if(!overlay){
     if(hiding){pr.push(['',`${K('E','Y')}Leave ${hiding.name}`,'act'])}
-    else if(interior&&interior.home){const t=nearHomeThing();if(t==='bed')pr.push(['',`${K('E','Y')}Sleep until morning · saves the game`,'act']);else if(t==='desk')pr.push(['',`${K('E','Y')}Home computer · decorate and set spawn`,'act']);else if(t==='fridge')pr.push(['',`${K('E','Y')}Raid the fridge`,'act']);if(ped.y>IH-90)pr.push(['info','Walk out the front door to leave'])}
+    else if(interior&&interior.home){const t=nearHomeThing();if(t==='bed')pr.push(['',`${K('E','Y')}Sleep until morning · saves the game`,'act']);else if(t==='desk')pr.push(interior.guest?['info',interior.guest.name+'’s computer']:['',`${K('E','Y')}Home computer · decorate, set spawn${mpOn()?', invite players':''}`,'act']);else if(t==='fridge')pr.push(['',`${K('E','Y')}Raid the fridge`,'act']);if(interior.guest&&ped.y<IH-90&&!t)pr.push(['info','Guest at '+interior.guest.name+'’s house']);if(ped.y>IH-90)pr.push(['info','Walk out the front door to leave'])}
     else if(interior){
       const I=interior;
       if(I.dealer){const b=nearTurn();
@@ -3886,7 +3891,7 @@ function updateHUD(speed){
       if(I.def.rob&&!I.robbed&&I.sh.robbedUntil<time&&I.prog===0)pr.push(['info',ped.weapon?'Keep your weapon on the clerk to rob this place':ownedWeapons().length?`Draw a weapon (${pad.using?'LB/RB':'Q'}) to rob this place`:'Buy a gun to rob places like this']);
       if(ped.y>IH-90)pr.push(['info',I.garage?'Walk out the door to go back to your car':'Walk out the door to leave']);
     }else if(onFoot){
-      const hm=nearHome();if(hm)pr.push(['',ownsHome(hm)?`${K('E','Y')}Go inside ${hm.name}`:`${K('E','Y')}For sale · ${hm.name} · ${money(hm.price)}`,'act']);
+      const hm=nearHome(),hv=hm&&!ownsHome(hm)&&mpInviteFor(hm);if(hm)pr.push(['',ownsHome(hm)?`${K('E','Y')}Go inside ${hm.name}`:hv?`${K('E','Y')}Visit ${hv.name}’s house`:`${K('E','Y')}For sale · ${hm.name} · ${money(hm.price)}`,'act']);
       const sh=nearShop();if(sh)pr.push(['',`${K('E','Y')}Enter ${sh.name}`,'act']);
       const e=nearEvent();if(e){if(e.type==='garage')pr.push(['',`${K('E','Y')}${e.name}`,'act']);else if(e.type==='hide')pr.push([police.heat>=1?'':'info',police.heat>=1?`${K('E','Y')}Hide in ${e.name}`:e.name+' · come here when the police are after you',police.heat>=1?'act':'']);else if(e.type==='chop')pr.push(['info',e.name+' · bring a stolen car to sell it']);else pr.push(['info','Get in a car to start '+e.name])}
       const t=enterTarget();if(t){const nm=t.kind==='traffic'?`Steal the ${(TMODEL[t.obj.style]||TMODEL.sedan).name.toLowerCase()}`:t.kind==='cop'?'Steal the police cruiser':t.kind==='own'?'Get back in':'Get in the '+carName(t.obj).toLowerCase();pr.push([t.kind==='traffic'||t.kind==='cop'?'warn':'',`${K('F','B')}${nm}`,'car'])}
@@ -5301,8 +5306,9 @@ function setTab(t,focus){
 function seg(label,key,opts,sub){
   return `<div class="setrow"><span class="lbl">${label}</span><div class="seg">${opts.map(([v,t])=>`<button class="segb ${String(save.cfg[key])===String(v)?'on':''}" data-set="${key}" data-val="${v}">${t}</button>`).join('')}</div>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
 }
-const VERSION='2.29';
+const VERSION='2.30';
 const CHANGELOG=[
+  ['2.30','Open house',['Settings has a Player name box: type a new name and press Save name or Enter, and everyone sees it right away','Invite other players to your house: use the home computer, pick a player and press Invite','Invited players get a waypoint to your front door and can walk in with E / Y while you are online','Guests see your floor, walls, furniture and extras exactly as you decorated them, and you see each other inside','Guests can raid the fridge and nap, but only the owner can use the home computer']],
   ['2.29','See the gunfight',['Multiplayer: you now see other players’ bullets, shotgun blasts, sniper shots, rockets and tank shells, with muzzle flashes, gunshot sounds that fade with distance and explosions where rockets land','Multiplayer: players in the same shop, bank, garage or dealership now see each other inside, with name tags, health bars and chat bubbles','You can shoot and be shot by other players inside shops too; your own house stays private']],
   ['2.28','Room for every car',['Walk-in garages now have a car lift panel by the right wall: press E / Y to swap the six bays to your next six cars, so every car you own can be picked','The garage opens on the page with the car you are driving, and the panel shows which page you are on','The garage car list now scrolls on its own, with your current ride at the top and a count of how many cars you own','Scroll the car list with the mouse wheel, a swipe or the right stick on a controller']],
   ['2.27','Auto updates',['Self-hosted servers can pull the newest game straight from GitHub','Players get a message when a new version is ready, so they know to reload']],
@@ -5361,6 +5367,7 @@ function renderMenu(){
       seg('Engine sound','engine',[[1,'On'],[0,'Off']],'Each type of vehicle has its own engine: buzzy hatchbacks, rumbling V8s, screaming supercars, humming EVs, rotor chop and jet whine.')+
       seg('Chase music','music',[[1,'On'],[0,'Off']],'Music kicks in when the police are after you, gets more intense with every star and winds down as you lose them.')+
       seg('Multiplayer','mp',[[1,'On'],[0,'Off']],'Everyone with the game open shares the same city: see their cars and characters, bump into them, shoot them and chat with T. Traffic, police and missions stay your own.')+
+      `<div class="setrow"><span class="lbl">Player name</span><div class="seg nickrow"><input id="nickIn" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Pick a name" value="${esc(save.nick||'')}"><button class="segb" id="nickSave">Save name</button></div><span class="sub">What other players see above you in multiplayer and in chat. You can also type /name NewName in chat.</span></div>`+
       seg('Screen shake','shake',[[0,'Off'],[1,'On']])+
       seg('Developer mode','dev',[[0,'Off'],[1,'On']],'Adds a Developer tab to the pause menu with a vehicle spawner, cheats, teleports and debug info. Needs the developer password to switch on.')+
       `<div class="setrow"><span class="lbl">Saved progress</span><div class="seg"><button class="segb" id="resetBtn">Reset progress</button></div></div></div>
@@ -5938,7 +5945,7 @@ function mpSend(dt){
   const st={v:1,x:mpR0(pp.x),y:mpR0(pp.y),vx:mpR0(pp.vx||0),vy:mpR0(pp.vy||0),f:onFoot?1:0,a:mpR1(onFoot?ped.aim:P.a),
     st:inCar?P.m.style:'',c:inCar?P.col:'',l:inCar?P.m.len:0,w:inCar?P.m.wid:0,z:inCar?mpR0(P.z||0):0,dead:inCar&&P.dead?1:0,
     gun:onFoot?(ped.weapon||''):'',of:save.outfit||'street',pc:save.paint,hp:mpR0(onFoot?ped.hp:P.hp),h:Math.floor(police.heat),
-    in:interior?1:0,iid:mpMyIid(),hide:hiding?1:0,shots:mpShotsOut(),nick:(save.nick||'').slice(0,20),cops:mpCops(),hits:MP.hits.slice(-6),say:MP.say,t:Date.now()%100000};
+    in:interior?1:0,iid:mpMyIid(),hide:hiding?1:0,shots:mpShotsOut(),nick:(save.nick||'').slice(0,20),cops:mpCops(),hits:MP.hits.slice(-6),inv:mpInvitesOut(),say:MP.say,t:Date.now()%100000};
   const sig=JSON.stringify(st).replace(/"t":\d+/,'');
   if(sig===MP.lastSig)return;MP.lastSig=sig;
   MP.room.presence(st).catch(()=>{});
@@ -5957,6 +5964,8 @@ function mpRead(dt){
     if(Array.isArray(s.shots)&&r.here)mpSpawnShots(s.shots,r);
     // hits other players landed on me
     if(Array.isArray(s.hits))for(const h of s.hits){if(!h||h.to!==MP.me||typeof h.n!=='number'||typeof h.d!=='number')continue;const k=p.peer;if((MP.seen[k]||0)>=h.n)continue;MP.seen[k]=h.n;mpTakeHit(Math.min(120,Math.max(0,h.d)),r)}
+    // house invites sent to me
+    if(Array.isArray(s.inv))for(const q of s.inv)mpGotInvite(q,p.peer,r);
     // chat bubbles
     if(s.say&&typeof s.say.text==='string'&&s.say.id!==r.sayId){r.sayId=s.say.id;if(r.sayId!=null&&Date.now()%100000-(s.t||0)<15000){r.bubble=s.say.text.slice(0,80);r.bubbleT=6;addFeed(r.name+': '+r.bubble)}}
   }
@@ -5998,8 +6007,8 @@ function mpCollide(){
   }
 }
 // ---------- shared spaces (the street, or the same shop) ----------
-function mpMyIid(){if(!interior||interior.home)return '';const sh=interior.sh;return sh?String(sh.id||(sh.type+':'+sh.name)).slice(0,40):''}
-const mpMySpace=()=>interior?(interior.home?'me-home':'i:'+mpMyIid()):'w';
+function mpMyIid(){if(!interior)return '';if(interior.home)return 'h:'+(interior.guest?interior.guest.owner:MP.me||'?')+':'+interior.home.id;const sh=interior.sh;return sh?String(sh.id||(sh.type+':'+sh.name)).slice(0,40):''}
+const mpMySpace=()=>interior?'i:'+mpMyIid():'w';
 const mpSpace=(s,peer)=>s.in?(s.iid?'i:'+s.iid:'home:'+peer):'w';
 // ---------- shots other players can see ----------
 MP.shots=[];MP.shotN=0;MP.shotSeen={};
@@ -6035,6 +6044,62 @@ function mpFxBulletHit(b){
   return hit;
 }
 {const orig=updateBullets;updateBullets=function(dt){for(const b of bullets)if(b.from==='m'&&b.mex&&b.life-dt<=0){b.mex=false;mpFxBoom(b.x,b.y)}return orig(dt)}}
+// ---------- player name ----------
+function mpSetNick(v){
+  const nm=String(v||'').replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/g,'').replace(/\s+/g,' ').trim().slice(0,20);
+  if(!nm){addFeed('Type a name first',null,true);return false}
+  if(nm===save.nick){addFeed('Your name is already '+nm);return true}
+  save.nick=nm;persist();MP.lastSig='';MP.sendT=0;addFeed('Your name is now '+nm);beep(660,.08);setTimeout(()=>beep(880,.1),80);return true;
+}
+$('mpanel').addEventListener('click',e=>{if(e.target.closest('#nickSave')){const i=$('nickIn');if(i&&mpSetNick(i.value)){i.value=save.nick;i.blur()}}});
+// typing in the name box must not drive the car, open chat or close the menu
+addEventListener('keydown',e=>{const a=document.activeElement;if(!a||a.id!=='nickIn')return;e.stopPropagation();
+  if(e.code==='Enter'||e.code==='NumpadEnter'){e.preventDefault();if(mpSetNick(a.value)){a.value=save.nick;a.blur()}}else if(e.code==='Escape'){e.preventDefault();a.value=save.nick||'';a.blur()}},true);
+addEventListener('keyup',e=>{const a=document.activeElement;if(a&&a.id==='nickIn')e.stopPropagation()},true);
+// ---------- house invites ----------
+MP.invOut=[];MP.invIn={};MP.invN=0;MP.invSeen={};
+const INVITE_MIN=15;
+function mpInvite(peer,h){
+  const r=MP.remote.get(peer);if(!r||!ownsHome(h))return;
+  const c=homeCfg(h),cfg={floor:c.floor,wall:c.wall,style:c.style,extras:(c.extras||[]).slice(0,12)};
+  MP.invOut=MP.invOut.filter(q=>!(q.to===peer&&q.h===h.id));
+  MP.invOut.push({to:peer,n:++MP.invN,h:h.id,c:cfg,t:time});if(MP.invOut.length>8)MP.invOut.shift();
+  MP.sendT=0;addFeed('Invited '+r.name+' to '+h.name);beep(520,.08);setTimeout(()=>beep(780,.12),90);
+}
+function mpInvitesOut(){
+  MP.invOut=MP.invOut.filter(q=>time-q.t<INVITE_MIN*60&&MP.remote.has(q.to)&&homes.some(h=>h.id===q.h&&ownsHome(h)));
+  // keep what guests see up to date if you redecorate
+  for(const q of MP.invOut){const h=homes.find(x=>x.id===q.h),c=homeCfg(h);q.c={floor:c.floor,wall:c.wall,style:c.style,extras:(c.extras||[]).slice(0,12)}}
+  return MP.invOut.length?MP.invOut.map(q=>({to:q.to,n:q.n,h:q.h,c:q.c})):null;
+}
+const mpCfgOk=c=>c&&typeof c==='object'&&HOME_OPT.floor.some(o=>o[0]===c.floor)&&HOME_OPT.wall.some(o=>o[0]===c.wall)&&HOME_OPT.style.some(o=>o[0]===c.style)&&Array.isArray(c.extras);
+function mpGotInvite(q,from,r){
+  if(!q||q.to!==MP.me||typeof q.h!=='string'||typeof q.n!=='number')return;
+  const h=homes.find(x=>x.id===q.h);if(!h||!mpCfgOk(q.c))return;
+  const cfg={floor:q.c.floor,wall:q.c.wall,style:q.c.style,extras:q.c.extras.filter(x=>typeof x==='string'&&HOME_OPT.extras.some(o=>o[0]===x))};
+  MP.invIn[h.id]={from,name:r.name,cfg,t:time,h};
+  const key=from+':'+q.n;if(MP.invSeen[key])return;MP.invSeen[key]=1;
+  if(!ownsHome(h)){waypoint={x:h.sx,y:h.sy,name:h.name};gps=null;gpsT=0}
+  addFeed(r.name+' invited you to '+h.name+' · waypoint set');banner('House invite',r.name+' · '+h.name,2.2);beep(660,.1);setTimeout(()=>beep(880,.1),110);setTimeout(()=>beep(1100,.2),220);
+}
+function mpInviteFor(h){
+  const q=MP.invIn[h.id];if(!q||!mpOn())return null;
+  if(time-q.t>30||!MP.remote.has(q.from)){delete MP.invIn[h.id];return null} // invite withdrawn, or the host left
+  q.name=MP.remote.get(q.from).name;return q;
+}
+function mpVisitHome(h){
+  const q=mpInviteFor(h);if(!q)return;
+  enterShop(h);if(!interior||interior.home!==h)return;
+  interior.guest={owner:q.from,name:q.name,cfg:q.cfg};interior.def=Object.assign({},interior.def,{label:q.name+'’s home',line:'You’re a guest here. Help yourself to the fridge.'});
+  addFeed('Welcome to '+q.name+'’s house');
+}
+function mpInviteHTML(){
+  if(!mpOn())return '';
+  const h=homePanel&&homePanel.h,list=[...MP.remote.values()].filter(r=>r.s);
+  const row=r=>{const sent=MP.invOut.find(q=>q.to===r.peer&&h&&q.h===h.id),here=r.here&&interior&&interior.home===h;
+    return `<div class="item"><span class="nm"><span class="hsw" style="background:${r.col}"></span>${esc(r.name)}</span><span class="ds">${here?'Here now':sent?'Invited · they get a waypoint to your door':'In the city'}</span><span class="pr"></span><button class="btn sm" data-hm="inv:${esc(r.peer)}" ${here?'disabled':''}>${sent?'Invite again':'Invite'}</button></div>`};
+  return `<p class="eyebrow hsec">Invite players</p>`+(list.length?list.map(row).join(''):`<p class="hint">No one else is online right now.</p>`);
+}
 // ---------- drawing ----------
 function mpOutfit(id){return OUTFITS.find(o=>o.id===id)||OUTFITS[0]}
 function mpDrawWorld(g,vis){
@@ -6053,7 +6118,7 @@ function mpDrawWorld(g,vis){
   }
 }
 function mpDrawTags(g){
-  if(!mpOn()||(interior&&interior.home))return;
+  if(!mpOn())return;
   for(const r of MP.remote.values()){
     if(!mpVisible(r))continue;const s=r.s,lift=(s.f?26:Math.max(28,(s.l||36)*.7))+(s.z||0)*.35;
     if(Math.abs(r.x-cam.x)>2200||Math.abs(r.y-cam.y)>2200)continue;
@@ -6080,7 +6145,7 @@ function mpDrawBig(){
     bctx.fillStyle='rgba(0,0,0,.75)';bctx.fillText(r.name.toUpperCase(),x+1,y-11*DPR+1);bctx.fillStyle='#fff';bctx.fillText(r.name.toUpperCase(),x,y-11*DPR)}
 }
 {const orig=drawHomesWorld;drawHomesWorld=function(g,vis){orig(g,vis);mpDrawWorld(g,vis)}}
-{const orig=drawBullets;drawBullets=function(g){if(g===ctx&&interior&&!interior.home)mpDrawWorld(g,()=>true);orig(g);if(g===ctx)mpDrawTags(g)}}
+{const orig=drawBullets;drawBullets=function(g){if(g===ctx&&interior)mpDrawWorld(g,()=>true);orig(g);if(g===ctx)mpDrawTags(g)}}
 {const orig=drawMini;drawMini=function(){orig();mpDrawMini()}}
 {const orig=drawBigMap;drawBigMap=function(){orig();mpDrawBig()}}
 // ---------- online chip + chat ----------
@@ -6101,7 +6166,7 @@ function mpOpenChat(){
   if(!mpOn()&&!overlay&&save.cfg.mp!==0&&MP.status){if(time-(MP.warnT||-99)>6){MP.warnT=time;addFeed('Chat needs multiplayer, which is not available for this account here',null,true)}return}
   if(!mpOn()||overlay||MP.chatOpen)return;MP.chatOpen=true;for(const k in inp)inp[k]=0;
   let box=$('mpchat');if(!box){box=document.createElement('form');box.id='mpchat';box.innerHTML='<input id="mpchatIn" maxlength="80" autocomplete="off" placeholder="Say something to everyone · Enter to send, Esc to cancel" aria-label="Chat message"><button class="btn sm">Send</button>';$('game').appendChild(box);
-    box.addEventListener('submit',e=>{e.preventDefault();const v=$('mpchatIn').value.replace(/[\u0000-\u001f\u007f​-‏‪-‮⁠-⁯]/g,'').trim();if(MP.naming||/^\/name\s+/i.test(v)){const nm=(MP.naming?v:v.replace(/^\/name\s+/i,'')).slice(0,20);MP.naming=false;if(nm){save.nick=nm;persist();MP.lastSig='';addFeed('Your name is now '+nm)}mpCloseChat();return}if(v){MP.say={id:Date.now()%1e9,text:v.slice(0,80)};MP.sendT=0;addFeed('You: '+v.slice(0,80))}mpCloseChat()})}
+    box.addEventListener('submit',e=>{e.preventDefault();const v=$('mpchatIn').value.replace(/[\u0000-\u001f\u007f​-‏‪-‮⁠-⁯]/g,'').trim();if(MP.naming||/^\/name\s+/i.test(v)){const nm=(MP.naming?v:v.replace(/^\/name\s+/i,'')).slice(0,20);MP.naming=false;if(nm)mpSetNick(nm);mpCloseChat();return}if(v){MP.say={id:Date.now()%1e9,text:v.slice(0,80)};MP.sendT=0;addFeed('You: '+v.slice(0,80))}mpCloseChat()})}
   box.hidden=false;const i=$('mpchatIn');i.value='';setTimeout(()=>i.focus(),10);
 }
 function mpAskName(){mpOpenChat();if(!MP.chatOpen)return;MP.naming=true;const i=$('mpchatIn');i.placeholder='Pick a player name so friends know who you are · Enter to save';i.value=save.nick||''}
